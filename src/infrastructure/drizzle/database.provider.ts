@@ -15,7 +15,7 @@ export class DrizzleDatabaseService implements OnModuleInit, OnModuleDestroy {
     // Run migrations on startup
     try {
       await migrate(this.dbInstance!.db, {
-        migrationsFolder: './src/infrastructure/drizzle/migrations'
+        migrationsFolder: '/app/src/infrastructure/drizzle/migrations'
       })
       console.log('Database migrations completed successfully')
     } catch (error) {

@@ -38,16 +38,10 @@ import { NotificationsModule } from './notifications/notifications.module'
               ],
 
               transport: {
-                target: 'pino-loki',
+                target: 'pino-pretty',
                 options: {
-                  host: 'http://loki:3100',
-                  labels: {
-                    application: 'incluir-chat-ai',
-                    environment: 'production'
-                  },
-                  batching: true,
-                  interval: 5,
-                  silenceErrors: false
+                  colorize: false,
+                  singleLine: true
                 }
               }
             }
