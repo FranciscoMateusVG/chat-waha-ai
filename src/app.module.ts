@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { ScheduleModule } from '@nestjs/schedule'
+import { APP_GUARD } from '@nestjs/core'
 import { LoggerModule } from 'nestjs-pino'
 import { AiModule } from './ai/ai.module'
+import { AuthModule } from './auth/auth.module'
+import { AuthGuard } from './auth/auth.guard'
 import { ChatHistoryModule } from './chatHistory/chatHistory.module'
 import { NotificationsModule } from './notifications/notifications.module'
 
@@ -12,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module'
       isGlobal: true
     }),
     ScheduleModule.forRoot(),
+    AuthModule,
     LoggerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -68,6 +72,12 @@ import { NotificationsModule } from './notifications/notifications.module'
     ChatHistoryModule,
     NotificationsModule,
     AiModule
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard
+    }
   ]
 })
 export class AppModule {}

@@ -21,6 +21,22 @@ async function bootstrap() {
     .addTag('notifications')
     .addTag('AI Testing')
     .addTag('Knowledge')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'API Key'
+      },
+      'Bearer'
+    )
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'x-api-key',
+        in: 'header'
+      },
+      'ApiKey'
+    )
     .build()
 
   const document = SwaggerModule.createDocument(app, config)
