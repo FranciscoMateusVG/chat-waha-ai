@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS `chat_histories_external_chat_id_unique`;
