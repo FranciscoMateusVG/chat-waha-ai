@@ -14,10 +14,14 @@ services:
       - API_KEY=${API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - WAHA_BASE_URL=${WAHA_BASE_URL:-http://waha:3000}
+      - WAHA_DEFAULT_SESSION=${WAHA_DEFAULT_SESSION:-default}
     volumes:
       - ./data:/app/data
       - ./chat-ai-data.sqlite:/app/chat-ai-data.sqlite
     restart: unless-stopped
+    depends_on:
+      - waha
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
@@ -25,6 +29,27 @@ services:
       retries: 3
       start_period: 40s
 
+  waha:
+    image: devlikeapro/waha-plus:latest
+    restart: unless-stopped
+    environment:
+      - WHATSAPP_HOOK_URL=http://chat-ai:3000/chatHistory/webhook/waha
+      - WHATSAPP_HOOK_EVENTS=message
+      - WHATSAPP_DEFAULT_ENGINE=WEBJS
+      - WHATSAPP_START_SESSION=default
+    ports:
+      - '3001:3000'
+    volumes:
+      - waha_sessions:/app/.sessions
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
 volumes:
   chat_data:
+    driver: local
+  waha_sessions:
     driver: local
