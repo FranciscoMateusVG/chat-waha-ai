@@ -1,5 +1,5 @@
-const MIN_LENGTH = 10;  
-const MAX_LENGTH = 13;
+const MIN_LENGTH = 10; // DDD + 8 digits number (without starting 9)
+const MAX_LENGTH = 13; // DDI + DDD + 9 digits number (with starting 9)
 
 export class PhoneNumber {
   private readonly _value: string;
@@ -19,7 +19,7 @@ export class PhoneNumber {
     return this._value;
   }
 
-  equals(other: this.: boolean {
+  equals(other: PhoneNumber): boolean {
     return this._value === other._value;
   }
 
@@ -38,7 +38,7 @@ export class PhoneNumber {
     return value.replace(/\D/g, "");
   }
 
-  private static normalize(value: string): string {
+  private normalize(value: string): string {
     let v = this.addsCountryCodeIfNeeded(value);
     v = this.addsNineDigitIfNeeded(v);
     return v;
