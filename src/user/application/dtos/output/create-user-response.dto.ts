@@ -6,12 +6,12 @@ interface UserData {
 }
 
 export interface CreateUserResponseSuccess {
-	sucess: true,
+	success: true,
 	user: UserData
 }
 
 export interface CreateUserResponseError {
-	sucess: false,
+	success: false,
 	error: string,
 }
 
