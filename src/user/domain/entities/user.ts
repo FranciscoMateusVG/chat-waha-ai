@@ -20,12 +20,12 @@ export class User {
     this._email = props.email;
   }
 
-  static create(name: string, phone: PhoneNumber, email: Email, id?: UserId) {
+  static create(name: string, phone: string, email: string, id?: UserId) {
     return new User({
       id: id ?? new UserId(),
       name: name,
-      phone: phone,
-      email: email,
+      phone: new PhoneNumber(phone),
+      email: new Email(email),
     });
   }
 
