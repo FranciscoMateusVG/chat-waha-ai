@@ -44,4 +44,8 @@ export class User {
   get phone() {
     return this._phone;
   }
+
+  get email() {
+    return this._email;
+  }
 }
