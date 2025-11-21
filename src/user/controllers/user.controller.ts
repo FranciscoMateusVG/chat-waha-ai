@@ -1,6 +1,7 @@
 import { Body } from "@nestjs/common";
 import { CreateUserUseCase } from "../application/use-cases/create-user.use-case";
 import { CreateUserRequest } from "./interfaces/requests/create-user.request";
+import { CreateUserResponse } from "./interfaces/responses/create-user.response";
 import { AuthPort } from "../application/ports/auth.port";
 
 export class UserController {
@@ -9,7 +10,9 @@ export class UserController {
     private readonly authService: AuthPort,
   ) {}
 
-  async createUser(@Body() body: CreateUserRequest) {
+  async createUser(
+    @Body() body: CreateUserRequest,
+  ): Promise<CreateUserResponse> {
     try {
       const result = await this.createUserUseCase.execute({
         name: body.name,
@@ -27,9 +30,9 @@ export class UserController {
         body.password,
       );
 
-			// TODO: deal with success;
+      // TODO: deal with success;
     } catch (error) {
-			// TODO: deal with error;
-		}
+      // TODO: deal with error;
+    }
   }
 }
