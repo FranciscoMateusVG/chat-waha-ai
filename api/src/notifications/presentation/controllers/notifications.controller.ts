@@ -21,6 +21,7 @@ import {
   ApiQuery,
   ApiTags
 } from '@nestjs/swagger'
+import { ApiAuth } from '../../../common/decorators/api-auth.decorator'
 import {
   GetNotificationHistoryDto,
   GetNotificationStatsDto,
@@ -33,6 +34,7 @@ import {
 } from '../../application/use-cases'
 
 @ApiTags('notifications')
+@ApiAuth()
 @Controller('notifications')
 export class NotificationsController {
   private readonly logger = new Logger(NotificationsController.name)

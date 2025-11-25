@@ -30,7 +30,7 @@ services:
       start_period: 40s
 
   waha:
-    image: devlikeapro/waha-plus:latest
+    image: devlikeapro/waha:latest
     restart: unless-stopped
     environment:
       - WHATSAPP_HOOK_URL=http://chat-ai:3000/chatHistory/webhook/waha
