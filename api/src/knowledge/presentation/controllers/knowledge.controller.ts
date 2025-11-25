@@ -20,6 +20,7 @@ import {
   ApiResponse,
   ApiTags
 } from '@nestjs/swagger'
+import { ApiAuth } from '../../../common/decorators/api-auth.decorator'
 
 // Use Cases
 import {
@@ -50,6 +51,7 @@ import {
 } from '../dtos'
 
 @ApiTags('Knowledge')
+@ApiAuth()
 @Controller('knowledge')
 export class KnowledgeController {
   constructor(

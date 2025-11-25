@@ -20,6 +20,7 @@ import {
   ApiResponse,
   ApiTags
 } from '@nestjs/swagger'
+import { ApiAuth } from '../../common/decorators/api-auth.decorator'
 import {
   ApiResponseDto,
   ChatHistoryDto,
@@ -35,6 +36,7 @@ import { ChatHistoryRepository } from '../domain/repositories/chat-history.repos
 import { CHAT_HISTORY_REPOSITORY } from '../tokens'
 
 @ApiTags('Chat History')
+@ApiAuth()
 @Controller('chat-history')
 export class ChatHistoryController {
   private readonly logger = new Logger(ChatHistoryController.name)

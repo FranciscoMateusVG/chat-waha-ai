@@ -5,6 +5,7 @@ import {
   ApiResponse,
   ApiTags
 } from '@nestjs/swagger'
+import { ApiAuth } from '../../../common/decorators/api-auth.decorator'
 import { AI_SERVICE } from '../../tokens'
 import { AiMessage, AiService } from '../services/ai.service.interface'
 
@@ -46,6 +47,7 @@ class GenerateSimpleResponseDto {
 }
 
 @ApiTags('AI Testing')
+@ApiAuth()
 @Controller('ai/test')
 export class AiTestController {
   private readonly logger = new Logger(AiTestController.name)
