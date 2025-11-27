@@ -1,0 +1,28 @@
+# Development Dockerfile with hot reload support
+FROM node:20-alpine AS development
+
+# Install dependencies for better-sqlite3 and curl for healthchecks
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    libc6-compat \
+    curl
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including devDependencies for development)
+RUN npm ci
+
+# Copy source code (will be overridden by volume mount in docker-compose.dev.yml)
+COPY . .
+
+# Expose the application port
+EXPOSE 3000
+
+# Start development server with hot reload
+CMD ["npm", "run", "dev"]
+

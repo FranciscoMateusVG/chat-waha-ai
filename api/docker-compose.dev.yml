@@ -4,34 +4,41 @@ services:
   chat-ai:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+      target: development
     ports:
       - '3000:3000'
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=3000
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
       - API_KEY=${API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - WAHA_BASE_URL=${WAHA_BASE_URL:-http://waha:3000}
       - WAHA_DEFAULT_SESSION=${WAHA_DEFAULT_SESSION:-default}
     volumes:
-      - ./data:/app/data
+      # Mount source code for hot reload
+      - ./src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.build.json:/app/tsconfig.build.json
+      - ./nest-cli.json:/app/nest-cli.json
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - ./drizzle.config.ts:/app/drizzle.config.ts
+      # Persist database
       - ./chat-ai-data.sqlite:/app/chat-ai-data.sqlite
+      # Use named volume for node_modules to avoid overwriting
+      - node_modules:/app/node_modules
     restart: unless-stopped
     depends_on:
       - waha
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    command: npm run dev
 
   waha:
-    image: devlikeapro/waha:latest
-    platform: linux/amd64
+    # For windows users, use :latest
+    image: devlikeapro/waha:arm
+    shm_size: '2gb' # Add this line
     restart: unless-stopped
     environment:
       - WHATSAPP_HOOK_URL=http://chat-ai:3000/chatHistory/webhook/waha
@@ -64,7 +71,7 @@ services:
       start_period: 60s
 
 volumes:
-  chat_data:
+  node_modules:
     driver: local
   waha_sessions:
     driver: local
