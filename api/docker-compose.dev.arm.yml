@@ -36,9 +36,8 @@ services:
     command: npm run dev
 
   waha:
-    # For windows users, use :latest
+    # For ARM machines (Mac M1/M2/M3), use :arm
     image: devlikeapro/waha:arm
-    shm_size: '2gb' # Add this line
     restart: unless-stopped
     environment:
       - WHATSAPP_HOOK_URL=http://chat-ai:3000/chatHistory/webhook/waha
