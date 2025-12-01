@@ -15,7 +15,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including devDependencies for development)
-RUN npm ci
+# Rebuild native modules to ensure compatibility with container architecture
+RUN npm ci && npm rebuild better-sqlite3
 
 # Copy source code (will be overridden by volume mount in docker-compose.dev.yml)
 COPY . .

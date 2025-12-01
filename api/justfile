@@ -1,5 +1,8 @@
 # Chat AI Development Commands
 
+# Configure shell for Windows
+set shell := ["powershell.exe", "-Command"]
+
 # Start the application with Docker Compose
 start:
     docker-compose up --build
@@ -28,9 +31,18 @@ clean:
 # Start development for ARM Macs (M1/M2/M3)
 dev-start-arm: 
     docker-compose -f docker-compose.dev.arm.yml up --build -d
+
+# Stop development for ARM Macs
+dev-stop-arm:
+    docker-compose -f docker-compose.dev.arm.yml down
+
 # Start development for Windows/x86
 dev-start-windows: 
     docker-compose -f docker-compose.dev.windows.yml up --build -d
+
+# Stop development for Windows/x86
+dev-stop-windows:
+    docker-compose -f docker-compose.dev.windows.yml down
 
 # Development mode (local)
 dev:
