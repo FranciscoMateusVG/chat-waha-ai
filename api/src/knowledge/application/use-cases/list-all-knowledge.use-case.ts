@@ -7,6 +7,7 @@ import {
 import { KNOWLEDGE_REPOSITORY } from '../../tokens'
 
 export interface ListAllKnowledgeRequest {
+  userId: string
   page?: number
   limit?: number
 }
@@ -43,14 +44,18 @@ export class ListAllKnowledgeUseCase {
   ) {}
 
   async execute(
-    request: ListAllKnowledgeRequest = {}
+    request: ListAllKnowledgeRequest
   ): Promise<ListAllKnowledgeResponse> {
     try {
+      if (!request.userId) {
+        throw new Error('User ID is required')
+      }
+
       const page = request.page || 1
       const limit = request.limit || 10
 
       const result: PaginatedResult<KnowledgeEntry> =
-        await this.knowledgeRepository.findAllPaginated({ page, limit })
+        await this.knowledgeRepository.findAllPaginated(request.userId, { page, limit })
 
       const knowledge = result.items.map((entry) => ({
         id: entry.id.value,

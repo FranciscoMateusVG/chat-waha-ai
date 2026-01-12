@@ -1,5 +1,14 @@
-import { Body, Controller, Inject, Logger, Post } from '@nestjs/common'
 import {
+  BadRequestException,
+  Body,
+  Controller,
+  Headers,
+  Inject,
+  Logger,
+  Post
+} from '@nestjs/common'
+import {
+  ApiHeader,
   ApiOperation,
   ApiProperty,
   ApiResponse,
@@ -8,6 +17,8 @@ import {
 import { ApiAuth } from '../../../common/decorators/api-auth.decorator'
 import { AI_SERVICE } from '../../tokens'
 import { AiMessage, AiService } from '../services/ai.service.interface'
+
+const USER_ID_HEADER = 'x-user-id'
 
 class AiMessageDto {
   @ApiProperty({
@@ -48,6 +59,12 @@ class GenerateSimpleResponseDto {
 
 @ApiTags('AI Testing')
 @ApiAuth()
+@ApiHeader({
+  name: USER_ID_HEADER,
+  description: 'User ID for multi-tenant data isolation',
+  required: true,
+  example: 'user-123'
+})
 @Controller('ai/test')
 export class AiTestController {
   private readonly logger = new Logger(AiTestController.name)
@@ -56,6 +73,13 @@ export class AiTestController {
     @Inject(AI_SERVICE)
     private readonly aiService: AiService
   ) {}
+
+  private validateUserId(userId: string | undefined): string {
+    if (!userId) {
+      throw new BadRequestException('X-User-ID header is required')
+    }
+    return userId
+  }
 
   @Post('generate')
   @ApiOperation({
@@ -85,13 +109,20 @@ export class AiTestController {
       }
     }
   })
-  async generateResponse(@Body() dto: GenerateResponseDto) {
+  async generateResponse(
+    @Headers(USER_ID_HEADER) userId: string,
+    @Body() dto: GenerateResponseDto
+  ) {
     try {
+      const validUserId = this.validateUserId(userId)
       this.logger.log(
-        `Recebida requisição de teste com ${dto.context.length} mensagens`
+        `Recebida requisição de teste com ${dto.context.length} mensagens para usuário ${validUserId}`
       )
 
-      const response = await this.aiService.generateResponse(dto.context)
+      const response = await this.aiService.generateResponse(
+        validUserId,
+        dto.context
+      )
 
       return {
         success: true,
@@ -136,9 +167,15 @@ export class AiTestController {
       }
     }
   })
-  async generateSimpleResponse(@Body() body: GenerateSimpleResponseDto) {
+  async generateSimpleResponse(
+    @Headers(USER_ID_HEADER) userId: string,
+    @Body() body: GenerateSimpleResponseDto
+  ) {
     try {
-      this.logger.log(`Recebida requisição simples: ${body.message}`)
+      const validUserId = this.validateUserId(userId)
+      this.logger.log(
+        `Recebida requisição simples: ${body.message} para usuário ${validUserId}`
+      )
 
       const context: AiMessage[] = [
         {
@@ -147,7 +184,10 @@ export class AiTestController {
         }
       ]
 
-      const response = await this.aiService.generateResponse(context)
+      const response = await this.aiService.generateResponse(
+        validUserId,
+        context
+      )
 
       return {
         success: true,

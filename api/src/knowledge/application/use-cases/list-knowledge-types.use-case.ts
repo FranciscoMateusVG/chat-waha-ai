@@ -2,6 +2,10 @@ import { Inject, Injectable, Logger } from '@nestjs/common'
 import { KnowledgeRepository } from '../../domain/repositories/knowledge.repository'
 import { KNOWLEDGE_REPOSITORY } from '../../tokens'
 
+export interface ListKnowledgeTypesRequest {
+  userId: string
+}
+
 export interface ListKnowledgeTypesResult {
   success: boolean
   types?: string[]
@@ -17,11 +21,15 @@ export class ListKnowledgeTypesUseCase {
     private readonly knowledgeRepository: KnowledgeRepository
   ) {}
 
-  async execute(): Promise<ListKnowledgeTypesResult> {
+  async execute(request: ListKnowledgeTypesRequest): Promise<ListKnowledgeTypesResult> {
     try {
+      if (!request.userId) {
+        throw new Error('User ID is required')
+      }
+
       this.logger.log('Retrieving all knowledge types')
 
-      const types = await this.knowledgeRepository.findAllTypes()
+      const types = await this.knowledgeRepository.findAllTypes(request.userId)
 
       this.logger.log(`Found ${types.length} knowledge types`)
 

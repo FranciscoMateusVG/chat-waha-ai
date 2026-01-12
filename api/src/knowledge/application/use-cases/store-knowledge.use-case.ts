@@ -4,6 +4,7 @@ import { KnowledgeRepository } from '../../domain/repositories/knowledge.reposit
 import { KNOWLEDGE_REPOSITORY } from '../../tokens'
 
 export interface StoreKnowledgeDto {
+  userId: string
   type: string
   topic: string
   content: string
@@ -31,12 +32,15 @@ export class StoreKnowledgeUseCase {
       this.logger.log(`Storing knowledge entry with type: ${dto.type}, topic: ${dto.topic}`)
 
       // Validate input
+      if (!dto.userId) {
+        throw new Error('User ID is required')
+      }
       if (!dto.type || !dto.topic || !dto.content) {
         throw new Error('Type, topic, and content are required')
       }
 
-      // Check if entry already exists
-      const existingEntry = await this.knowledgeRepository.findByTypeAndTopic(dto.type, dto.topic)
+      // Check if entry already exists for this user
+      const existingEntry = await this.knowledgeRepository.findByTypeAndTopic(dto.userId, dto.type, dto.topic)
       let knowledgeEntry: KnowledgeEntry
 
       if (existingEntry) {
@@ -47,6 +51,7 @@ export class StoreKnowledgeUseCase {
       } else {
         // Create new entry
         knowledgeEntry = KnowledgeEntry.create(
+          dto.userId,
           dto.type,
           dto.topic,
           dto.content,

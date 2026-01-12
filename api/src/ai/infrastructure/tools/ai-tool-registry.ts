@@ -15,22 +15,22 @@ export class AiToolRegistry {
     private readonly searchKnowledgeUseCase: SearchKnowledgeUseCase
   ) {}
 
-  getTools() {
+  getTools(userId: string) {
     return {
-      listKnowledgeTypes: this.createListKnowledgeTypesTool(),
-      listTopicsInType: this.createListTopicsInTypeTool(),
-      getMultipleKnowledgeContents: this.createGetMultipleKnowledgeContentsTool(),
-      searchKnowledge: this.createSearchKnowledgeTool()
+      listKnowledgeTypes: this.createListKnowledgeTypesTool(userId),
+      listTopicsInType: this.createListTopicsInTypeTool(userId),
+      getMultipleKnowledgeContents: this.createGetMultipleKnowledgeContentsTool(userId),
+      searchKnowledge: this.createSearchKnowledgeTool(userId)
     }
   }
 
-  private createListKnowledgeTypesTool() {
+  private createListKnowledgeTypesTool(userId: string) {
     return tool({
       description:
         'Obtém todas as categorias/tipos de conhecimento disponíveis no sistema. VOCÊ DEVE SEMPRE CHAMAR ISSO PRIMEIRO para descobrir quais tipos de informação estão disponíveis. Esta é a primeira etapa obrigatória do fluxo de descoberta.',
       parameters: z.object({}),
       execute: async () => {
-        const result = await this.listKnowledgeTypesUseCase.execute()
+        const result = await this.listKnowledgeTypesUseCase.execute({ userId })
 
         console.log('result', result)
 
@@ -43,7 +43,7 @@ export class AiToolRegistry {
     })
   }
 
-  private createListTopicsInTypeTool() {
+  private createListTopicsInTypeTool(userId: string) {
     return tool({
       description:
         'Obtém TODOS os tópicos dentro de um tipo de conhecimento específico. VOCÊ DEVE CHAMAR ISSO para cada tipo relevante para ver TODOS os tópicos disponíveis. Depois de ver todos os tópicos, você deve escolher quais são relevantes para a pergunta do usuário. Esta é a segunda etapa obrigatória do fluxo.',
@@ -55,7 +55,7 @@ export class AiToolRegistry {
           )
       }),
       execute: async ({ type }) => {
-        const result = await this.listTopicsUseCase.execute({ type })
+        const result = await this.listTopicsUseCase.execute({ userId, type })
 
         console.log('result', result)
 
@@ -68,7 +68,7 @@ export class AiToolRegistry {
     })
   }
 
-  private createGetMultipleKnowledgeContentsTool() {
+  private createGetMultipleKnowledgeContentsTool(userId: string) {
     return tool({
       description:
         'Recupera o conteúdo de MÚLTIPLOS tópicos de uma vez. VOCÊ DEVE USAR ISSO depois de ver todos os tópicos disponíveis e identificar quais são relevantes para a pergunta. Passe um array com os nomes EXATOS dos tópicos que você viu na listagem anterior. Esta é a terceira etapa final do fluxo.',
@@ -80,7 +80,7 @@ export class AiToolRegistry {
           )
       }),
       execute: async ({ topics }) => {
-        const result = await this.batchRetrieveKnowledgeUseCase.execute({ topics })
+        const result = await this.batchRetrieveKnowledgeUseCase.execute({ userId, topics })
 
         console.log('result', result)
 
@@ -107,7 +107,7 @@ export class AiToolRegistry {
     })
   }
 
-  private createSearchKnowledgeTool() {
+  private createSearchKnowledgeTool(userId: string) {
     return tool({
       description:
         '⚠️ FERRAMENTA DE FALLBACK - Use APENAS se o fluxo normal falhar completamente. NÃO USE ESTA FERRAMENTA em circunstâncias normais. Sempre prefira: 1) listKnowledgeTypes, 2) listTopicsInType, 3) getMultipleKnowledgeContents. Esta ferramenta faz busca textual genérica e deve ser evitada.',
@@ -119,7 +119,7 @@ export class AiToolRegistry {
           )
       }),
       execute: async ({ query }) => {
-        const result = await this.searchKnowledgeUseCase.execute({ query })
+        const result = await this.searchKnowledgeUseCase.execute({ userId, query })
 
         console.log('result', result)
 

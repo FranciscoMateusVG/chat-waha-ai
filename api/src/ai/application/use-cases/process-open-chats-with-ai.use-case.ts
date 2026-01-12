@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { ChatHistory } from 'src/chatHistory/domain/entities/chat-history'
 import { MessageContent } from 'src/chatHistory/domain/value-objects'
 import { WhatsAppClientService } from 'src/infrastructure/waha/waha-client.service'
@@ -13,6 +14,8 @@ import {
   AiService
 } from '../../infrastructure/services/ai.service.interface'
 import { AI_SERVICE } from '../../tokens'
+
+const DEFAULT_USER_ID = 'default'
 
 export interface ProcessOpenChatsResult {
   totalProcessed: number
@@ -30,8 +33,13 @@ export class ProcessOpenChatsWithAiUseCase {
     private readonly chatHistoryRepository: ChatHistoryRepository,
     @Inject(AI_SERVICE)
     private readonly aiService: AiService,
-    private readonly whatsAppClientService: WhatsAppClientService
+    private readonly whatsAppClientService: WhatsAppClientService,
+    private readonly configService: ConfigService
   ) {}
+
+  private getUserId(): string {
+    return this.configService.get<string>('DEFAULT_USER_ID') || DEFAULT_USER_ID
+  }
 
   async execute(): Promise<ProcessOpenChatsResult> {
     this.logger.log('Starting to process open chats with AI')
@@ -102,7 +110,8 @@ export class ProcessOpenChatsWithAiUseCase {
     )
 
     // Call AI service to generate response
-    const aiResponse = await this.aiService.generateResponse(context)
+    const userId = this.getUserId()
+    const aiResponse = await this.aiService.generateResponse(userId, context)
 
     this.logger.log(
       `AI generated response for chat ${chatId}: ${aiResponse.substring(0, 100)}...`

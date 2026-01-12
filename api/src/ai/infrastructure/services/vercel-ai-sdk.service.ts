@@ -16,10 +16,10 @@ export class VercelAiSdkService implements AiService {
     private readonly getSystemPromptUseCase: GetSystemPromptUseCase
   ) {}
 
-  async generateResponse(context: AiMessage[]): Promise<string> {
+  async generateResponse(userId: string, context: AiMessage[]): Promise<string> {
     try {
       this.logger.debug(
-        `Gerando resposta da IA com ${context.length} mensagens`
+        `Gerando resposta da IA com ${context.length} mensagens para usuário ${userId}`
       )
 
       const apiKey = this.configService.get<string>('OPENAI_API_KEY')
@@ -28,8 +28,8 @@ export class VercelAiSdkService implements AiService {
         throw new Error('OPENAI_API_KEY não configurada')
       }
 
-      // Get system prompt from database
-      const systemPromptResult = await this.getSystemPromptUseCase.execute()
+      // Get system prompt from database for this user
+      const systemPromptResult = await this.getSystemPromptUseCase.execute({ userId })
 
       if (!systemPromptResult.success || !systemPromptResult.systemPrompt) {
         throw new Error('Não foi possível obter o prompt do sistema')
@@ -52,7 +52,7 @@ export class VercelAiSdkService implements AiService {
             content: msg.content
           }))
         ],
-        tools: this.toolRegistry.getTools(),
+        tools: this.toolRegistry.getTools(userId),
         maxSteps: 5,
         maxTokens: 500,
         temperature: 0.7

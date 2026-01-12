@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -13,6 +15,7 @@ import {
 } from '@nestjs/common'
 import {
   ApiBadRequestResponse,
+  ApiHeader,
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
@@ -50,8 +53,16 @@ import {
   UpdateKnowledgeDto
 } from '../dtos'
 
+const USER_ID_HEADER = 'x-user-id'
+
 @ApiTags('Knowledge')
 @ApiAuth()
+@ApiHeader({
+  name: USER_ID_HEADER,
+  description: 'User ID for multi-tenant isolation',
+  required: true,
+  example: 'user-123'
+})
 @Controller('knowledge')
 export class KnowledgeController {
   constructor(
@@ -66,6 +77,13 @@ export class KnowledgeController {
     private readonly getSystemPromptUseCase: GetSystemPromptUseCase,
     private readonly deleteSystemPromptUseCase: DeleteSystemPromptUseCase
   ) {}
+
+  private validateUserId(userId: string | undefined): string {
+    if (!userId) {
+      throw new BadRequestException('X-User-ID header is required')
+    }
+    return userId
+  }
 
   @Get('all')
   @ApiOperation({
@@ -90,12 +108,18 @@ export class KnowledgeController {
     type: PaginatedResponseDto
   })
   async listAllKnowledge(
+    @Headers(USER_ID_HEADER) userId: string,
     @Query() paginationQuery: PaginationQueryDto
   ): Promise<PaginatedResponseDto<KnowledgeResponseDto>> {
+    const validUserId = this.validateUserId(userId)
     const page = paginationQuery.page || 1
     const limit = paginationQuery.limit || 10
 
-    const result = await this.listAllKnowledgeUseCase.execute({ page, limit })
+    const result = await this.listAllKnowledgeUseCase.execute({
+      userId: validUserId,
+      page,
+      limit
+    })
 
     if (!result.success) {
       throw new Error(result.error)
@@ -124,9 +148,12 @@ export class KnowledgeController {
     description: 'Invalid input data'
   })
   async createKnowledge(
+    @Headers(USER_ID_HEADER) userId: string,
     @Body(ValidationPipe) createKnowledgeDto: CreateKnowledgeDto
   ): Promise<ApiResponseDto<{ knowledgeId: string }>> {
+    const validUserId = this.validateUserId(userId)
     const result = await this.storeKnowledgeUseCase.execute({
+      userId: validUserId,
       type: createKnowledgeDto.type,
       topic: createKnowledgeDto.topic,
       content: createKnowledgeDto.content,
@@ -168,9 +195,14 @@ export class KnowledgeController {
     description: 'Knowledge entry not found'
   })
   async deleteKnowledge(
+    @Headers(USER_ID_HEADER) userId: string,
     @Param('id') id: string
   ): Promise<ApiResponseDto<{ message: string }>> {
-    const result = await this.deleteKnowledgeUseCase.execute({ id })
+    const validUserId = this.validateUserId(userId)
+    const result = await this.deleteKnowledgeUseCase.execute({
+      userId: validUserId,
+      id
+    })
 
     if (!result.success) {
       return {
@@ -211,10 +243,16 @@ export class KnowledgeController {
     description: 'Knowledge entry not found'
   })
   async getKnowledge(
+    @Headers(USER_ID_HEADER) userId: string,
     @Param('type') type: string,
     @Param('topic') topic: string
   ): Promise<ApiResponseDto<KnowledgeResponseDto | null>> {
-    const result = await this.retrieveKnowledgeUseCase.execute({ type, topic })
+    const validUserId = this.validateUserId(userId)
+    const result = await this.retrieveKnowledgeUseCase.execute({
+      userId: validUserId,
+      type,
+      topic
+    })
 
     if (!result.success) {
       return {
@@ -254,11 +292,14 @@ export class KnowledgeController {
     description: 'Knowledge entry not found'
   })
   async updateKnowledge(
+    @Headers(USER_ID_HEADER) userId: string,
     @Param('type') type: string,
     @Param('topic') topic: string,
     @Body(ValidationPipe) updateKnowledgeDto: UpdateKnowledgeDto
   ): Promise<ApiResponseDto<{ knowledgeId: string }>> {
+    const validUserId = this.validateUserId(userId)
     const result = await this.storeKnowledgeUseCase.execute({
+      userId: validUserId,
       type,
       topic,
       content: updateKnowledgeDto.content,
@@ -292,8 +333,13 @@ export class KnowledgeController {
     description: 'List of knowledge types',
     type: ApiResponseDto
   })
-  async getKnowledgeTypes(): Promise<ApiResponseDto<string[]>> {
-    const result = await this.listKnowledgeTypesUseCase.execute()
+  async getKnowledgeTypes(
+    @Headers(USER_ID_HEADER) userId: string
+  ): Promise<ApiResponseDto<string[]>> {
+    const validUserId = this.validateUserId(userId)
+    const result = await this.listKnowledgeTypesUseCase.execute({
+      userId: validUserId
+    })
 
     if (!result.success) {
       return {
@@ -324,9 +370,14 @@ export class KnowledgeController {
     type: ApiResponseDto
   })
   async getTopicsInType(
+    @Headers(USER_ID_HEADER) userId: string,
     @Param('type') type: string
   ): Promise<ApiResponseDto<string[]>> {
-    const result = await this.listTopicsUseCase.execute({ type })
+    const validUserId = this.validateUserId(userId)
+    const result = await this.listTopicsUseCase.execute({
+      userId: validUserId,
+      type
+    })
 
     if (!result.success) {
       return {
@@ -370,15 +421,18 @@ export class KnowledgeController {
     type: ApiResponseDto
   })
   async searchKnowledge(
+    @Headers(USER_ID_HEADER) userId: string,
     @Query('query') query: string,
     @Query('type') type?: string,
     @Query('tags') tagsString?: string
   ): Promise<ApiResponseDto<KnowledgeResponseDto[]>> {
+    const validUserId = this.validateUserId(userId)
     const tags = tagsString
       ? tagsString.split(',').map((tag) => tag.trim())
       : undefined
 
     const result = await this.searchKnowledgeUseCase.execute({
+      userId: validUserId,
       query,
       type,
       tags
@@ -412,9 +466,12 @@ export class KnowledgeController {
     description: 'Invalid input data'
   })
   async saveSystemPrompt(
+    @Headers(USER_ID_HEADER) userId: string,
     @Body(ValidationPipe) saveSystemPromptDto: SaveSystemPromptDto
   ): Promise<ApiResponseDto<{ message: string }>> {
+    const validUserId = this.validateUserId(userId)
     const result = await this.saveSystemPromptUseCase.execute({
+      userId: validUserId,
       content: saveSystemPromptDto.content
     })
 
@@ -443,10 +500,13 @@ export class KnowledgeController {
     description: 'System prompt retrieved successfully',
     type: ApiResponseDto
   })
-  async getSystemPrompt(): Promise<
-    ApiResponseDto<SystemPromptResponseDto | null>
-  > {
-    const result = await this.getSystemPromptUseCase.execute()
+  async getSystemPrompt(
+    @Headers(USER_ID_HEADER) userId: string
+  ): Promise<ApiResponseDto<SystemPromptResponseDto | null>> {
+    const validUserId = this.validateUserId(userId)
+    const result = await this.getSystemPromptUseCase.execute({
+      userId: validUserId
+    })
 
     if (!result.success) {
       return {
@@ -485,8 +545,13 @@ export class KnowledgeController {
   @ApiNotFoundResponse({
     description: 'System prompt not found'
   })
-  async deleteSystemPrompt(): Promise<ApiResponseDto<{ message: string }>> {
-    const result = await this.deleteSystemPromptUseCase.execute()
+  async deleteSystemPrompt(
+    @Headers(USER_ID_HEADER) userId: string
+  ): Promise<ApiResponseDto<{ message: string }>> {
+    const validUserId = this.validateUserId(userId)
+    const result = await this.deleteSystemPromptUseCase.execute({
+      userId: validUserId
+    })
 
     if (!result.success) {
       return {

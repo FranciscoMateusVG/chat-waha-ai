@@ -4,6 +4,7 @@ import { KnowledgeRepository } from '../../domain/repositories/knowledge.reposit
 import { KNOWLEDGE_REPOSITORY } from '../../tokens'
 
 export interface SearchKnowledgeDto {
+  userId: string
   query: string
   type?: string
   tags?: string[]
@@ -38,6 +39,9 @@ export class SearchKnowledgeUseCase {
     try {
       this.logger.log(`Searching knowledge entries with query: ${dto.query}`)
 
+      if (!dto.userId) {
+        throw new Error('User ID is required')
+      }
       if (!dto.query || dto.query.trim().length === 0) {
         throw new Error('Search query is required')
       }
@@ -45,11 +49,11 @@ export class SearchKnowledgeUseCase {
       let knowledgeEntries: KnowledgeEntry[]
 
       if (dto.tags && dto.tags.length > 0) {
-        knowledgeEntries = await this.knowledgeRepository.searchByTags(dto.tags)
+        knowledgeEntries = await this.knowledgeRepository.searchByTags(dto.userId, dto.tags)
       } else if (dto.type) {
-        knowledgeEntries = await this.knowledgeRepository.searchByType(dto.type, dto.query.trim())
+        knowledgeEntries = await this.knowledgeRepository.searchByType(dto.userId, dto.type, dto.query.trim())
       } else {
-        knowledgeEntries = await this.knowledgeRepository.search(dto.query.trim())
+        knowledgeEntries = await this.knowledgeRepository.search(dto.userId, dto.query.trim())
       }
 
       this.logger.log(`Found ${knowledgeEntries.length} knowledge entries`)
