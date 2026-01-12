@@ -19,8 +19,7 @@ services:
       - ./api/chat-ai-data.sqlite:/app/chat-ai-data.sqlite
     restart: unless-stopped
     depends_on:
-      waha:
-        condition: service_healthy
+      - waha
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
@@ -33,7 +32,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - '3000:80'
+      - '8080:80'
     restart: unless-stopped
     depends_on:
       - api

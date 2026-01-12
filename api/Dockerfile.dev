@@ -17,9 +17,11 @@ WORKDIR /app
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
+# Copy .npmrc for build script approvals
+COPY .npmrc ./
+
 # Install all dependencies (including devDependencies for development)
-# Note: --config.ignore-scripts=false allows native modules like better-sqlite3 to build
-RUN pnpm install --frozen-lockfile --config.ignore-scripts=false
+RUN pnpm install --frozen-lockfile
 
 # Copy source code (will be overridden by volume mount in docker-compose.dev.yml)
 COPY . .
