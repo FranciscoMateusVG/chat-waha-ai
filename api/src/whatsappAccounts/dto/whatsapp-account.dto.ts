@@ -24,4 +24,9 @@ export class UpdateWhatsappAccountDto {
   @IsOptional()
   @IsString()
   phoneNumber?: string
+
+  @ApiProperty({ example: 'active', required: false })
+  @IsOptional()
+  @IsString()
+  status?: string
 }

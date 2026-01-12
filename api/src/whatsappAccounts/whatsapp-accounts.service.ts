@@ -55,7 +55,7 @@ export class WhatsappAccountsService {
   async update(
     id: string,
     userId: string,
-    data: { name?: string; phoneNumber?: string }
+    data: { name?: string; phoneNumber?: string; status?: string }
   ): Promise<WhatsappAccount> {
     const db = this.dbService.getDatabase()
 

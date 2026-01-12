@@ -15,8 +15,15 @@ RUN pnpm install --frozen-lockfile
 # Copy source code (will be overridden by volume mount)
 COPY . .
 
+# Copy and set up entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Expose Vite dev server port
 EXPOSE 5173
+
+# Use entrypoint to ensure dependencies are synced
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Start development server with hot reload
 CMD ["pnpm", "run", "dev", "--host"]

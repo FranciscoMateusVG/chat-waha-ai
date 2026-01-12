@@ -1,0 +1,19 @@
+{
+  "name": "chat-waha",
+  "private": true,
+  "description": "Chat WAHA - WhatsApp AI Assistant",
+  "scripts": {
+    "dev": "docker compose -f docker-compose.dev.yml up",
+    "dev:build": "docker compose -f docker-compose.dev.yml up --build",
+    "dev:down": "docker compose -f docker-compose.dev.yml down",
+    "prod": "docker compose -f docker-compose.prod.yml up",
+    "prod:build": "docker compose -f docker-compose.prod.yml up --build",
+    "prod:down": "docker compose -f docker-compose.prod.yml down",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.42.0"
+  }
+}

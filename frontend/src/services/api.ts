@@ -53,23 +53,23 @@ export const authApi = {
 // WhatsApp Accounts API
 export const whatsappAccountsApi = {
   getAll: async (): Promise<WhatsappAccount[]> => {
-    const response = await api.get<WhatsappAccount[]>('/whatsapp-accounts');
-    return response.data;
+    const response = await api.get<{ accounts: WhatsappAccount[] }>('/whatsapp-accounts');
+    return response.data.accounts;
   },
 
   getById: async (id: string): Promise<WhatsappAccount> => {
-    const response = await api.get<WhatsappAccount>(`/whatsapp-accounts/${id}`);
-    return response.data;
+    const response = await api.get<{ account: WhatsappAccount }>(`/whatsapp-accounts/${id}`);
+    return response.data.account;
   },
 
   create: async (dto: CreateWhatsappAccountDto): Promise<WhatsappAccount> => {
-    const response = await api.post<WhatsappAccount>('/whatsapp-accounts', dto);
-    return response.data;
+    const response = await api.post<{ account: WhatsappAccount }>('/whatsapp-accounts', dto);
+    return response.data.account;
   },
 
   update: async (id: string, dto: UpdateWhatsappAccountDto): Promise<WhatsappAccount> => {
-    const response = await api.patch<WhatsappAccount>(`/whatsapp-accounts/${id}`, dto);
-    return response.data;
+    const response = await api.patch<{ account: WhatsappAccount }>(`/whatsapp-accounts/${id}`, dto);
+    return response.data.account;
   },
 
   delete: async (id: string): Promise<void> => {

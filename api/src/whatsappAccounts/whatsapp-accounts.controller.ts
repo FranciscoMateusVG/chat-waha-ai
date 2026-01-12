@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -50,7 +51,20 @@ export class WhatsappAccountsController {
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update a WhatsApp account' })
+  @ApiOperation({ summary: 'Update a WhatsApp account (PUT)' })
+  @ApiResponse({ status: 200, description: 'Account updated' })
+  @ApiResponse({ status: 404, description: 'Account not found' })
+  async updatePut(
+    @Param('id') id: string,
+    @Body() dto: UpdateWhatsappAccountDto,
+    @Req() req: Request
+  ) {
+    const account = await this.service.update(id, req.user!.id, dto)
+    return { account }
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a WhatsApp account (PATCH)' })
   @ApiResponse({ status: 200, description: 'Account updated' })
   @ApiResponse({ status: 404, description: 'Account not found' })
   async update(

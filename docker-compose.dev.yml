@@ -17,6 +17,9 @@ services:
       - WAHA_BASE_URL=${WAHA_BASE_URL:-http://waha:3000}
       - WAHA_DEFAULT_SESSION=${WAHA_DEFAULT_SESSION:-default}
     volumes:
+      # Mount package files so entrypoint can sync dependencies
+      - ./api/package.json:/app/package.json
+      - ./api/pnpm-lock.yaml:/app/pnpm-lock.yaml
       # Mount source code for hot reload
       - ./api/src:/app/src
       - ./api/tsconfig.json:/app/tsconfig.json
@@ -48,6 +51,9 @@ services:
       - NODE_ENV=development
       - VITE_API_URL=http://localhost:3001
     volumes:
+      # Mount package files so entrypoint can sync dependencies
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/pnpm-lock.yaml:/app/pnpm-lock.yaml
       # Mount source code for hot reload
       - ./frontend/src:/app/src
       - ./frontend/index.html:/app/index.html
