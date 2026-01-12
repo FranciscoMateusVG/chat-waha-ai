@@ -11,20 +11,71 @@ import type {
   SystemPrompt,
   NotificationHistory,
   NotificationStats,
-  ChannelStats
+  ChannelStats,
+  User,
+  WhatsappAccount,
+  CreateWhatsappAccountDto,
+  UpdateWhatsappAccountDto
 } from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-const API_KEY = import.meta.env.VITE_API_KEY || 'dev-api-key-12345';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: false,
+  withCredentials: true,
   headers: {
-    'x-api-key': API_KEY,
     'Content-Type': 'application/json'
   }
 });
+
+// Auth API
+export const authApi = {
+  register: async (email: string, password: string, name?: string): Promise<{ user: User }> => {
+    const response = await api.post<{ user: User }>('/auth/register', { email, password, name });
+    return response.data;
+  },
+
+  login: async (email: string, password: string): Promise<{ user: User }> => {
+    const response = await api.post<{ user: User }>('/auth/login', { email, password });
+    return response.data;
+  },
+
+  logout: async (): Promise<void> => {
+    await api.post('/auth/logout');
+  },
+
+  me: async (): Promise<{ user: User }> => {
+    const response = await api.get<{ user: User }>('/auth/me');
+    return response.data;
+  }
+};
+
+// WhatsApp Accounts API
+export const whatsappAccountsApi = {
+  getAll: async (): Promise<WhatsappAccount[]> => {
+    const response = await api.get<WhatsappAccount[]>('/whatsapp-accounts');
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<WhatsappAccount> => {
+    const response = await api.get<WhatsappAccount>(`/whatsapp-accounts/${id}`);
+    return response.data;
+  },
+
+  create: async (dto: CreateWhatsappAccountDto): Promise<WhatsappAccount> => {
+    const response = await api.post<WhatsappAccount>('/whatsapp-accounts', dto);
+    return response.data;
+  },
+
+  update: async (id: string, dto: UpdateWhatsappAccountDto): Promise<WhatsappAccount> => {
+    const response = await api.patch<WhatsappAccount>(`/whatsapp-accounts/${id}`, dto);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/whatsapp-accounts/${id}`);
+  }
+};
 
 // Chat History API
 export const chatHistoryApi = {

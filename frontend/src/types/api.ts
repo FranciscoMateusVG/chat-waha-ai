@@ -6,6 +6,37 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+// Auth Types
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// WhatsApp Account Types
+export interface WhatsappAccount {
+  id: string;
+  userId: string;
+  name: string;
+  phoneNumber?: string;
+  status: 'pending' | 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWhatsappAccountDto {
+  name: string;
+  phoneNumber?: string;
+}
+
+export interface UpdateWhatsappAccountDto {
+  name?: string;
+  phoneNumber?: string;
+  status?: 'pending' | 'active' | 'inactive';
+}
+
 export interface PaginationMeta {
   currentPage: number;
   pageSize: number;

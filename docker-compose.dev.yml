@@ -10,6 +10,7 @@ services:
       - NODE_ENV=development
       - PORT=3000
       - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - FRONTEND_URL=http://localhost:5173
       - API_KEY=${API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
@@ -45,6 +46,7 @@ services:
       - '5173:5173'
     environment:
       - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3001
     volumes:
       # Mount source code for hot reload
       - ./frontend/src:/app/src

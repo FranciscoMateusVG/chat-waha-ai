@@ -9,6 +9,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
       - API_KEY=${API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
@@ -31,6 +32,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
     ports:
       - '8080:80'
     restart: unless-stopped

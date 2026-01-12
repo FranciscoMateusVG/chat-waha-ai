@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { ValidationPipe } from '@nestjs/common'
 import * as dotenv from 'dotenv'
+import * as cookieParser from 'cookie-parser'
 import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
 
@@ -9,6 +11,15 @@ dotenv.config()
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true })
+
+  // Enable cookie parsing for session management
+  app.use(cookieParser())
+
+  // Enable validation pipes for DTOs
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true
+  }))
 
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',

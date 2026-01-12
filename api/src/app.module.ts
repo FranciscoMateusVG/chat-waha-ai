@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { ScheduleModule } from '@nestjs/schedule'
-import { APP_GUARD } from '@nestjs/core'
 import { LoggerModule } from 'nestjs-pino'
 import { AiModule } from './ai/ai.module'
 import { AuthModule } from './auth/auth.module'
-import { AuthGuard } from './auth/auth.guard'
 import { ChatHistoryModule } from './chatHistory/chatHistory.module'
 import { NotificationsModule } from './notifications/notifications.module'
+import { WhatsappAccountsModule } from './whatsappAccounts/whatsapp-accounts.module'
+import { HealthController } from './health/health.controller'
 
 @Module({
   imports: [
@@ -16,6 +16,7 @@ import { NotificationsModule } from './notifications/notifications.module'
     }),
     ScheduleModule.forRoot(),
     AuthModule,
+    WhatsappAccountsModule,
     LoggerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -73,11 +74,6 @@ import { NotificationsModule } from './notifications/notifications.module'
     NotificationsModule,
     AiModule
   ],
-  providers: [
-    {
-      provide: APP_GUARD,
-      useClass: AuthGuard
-    }
-  ]
+  controllers: [HealthController]
 })
 export class AppModule {}
