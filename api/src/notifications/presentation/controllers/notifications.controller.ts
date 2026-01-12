@@ -95,7 +95,7 @@ export class NotificationsController {
         `Sending individual notification via ${dto.channel} to user ${dto.recipientId}`
       )
 
-      const result = await this.sendNotificationUseCase.sendIndividual(dto)
+      const result = await this.sendNotificationUseCase.sendMessage(dto)
 
       if (!result.success) {
         throw new BadRequestException(result.error)
@@ -178,7 +178,7 @@ export class NotificationsController {
         `Sending batch notification via ${dto.channel} to ${dto.recipients.length} recipients`
       )
 
-      const result = await this.sendNotificationUseCase.sendBatch(dto)
+      const result = await this.sendNotificationUseCase.sendBatchMessages(dto)
 
       if (!result.success) {
         throw new BadRequestException(result.error)

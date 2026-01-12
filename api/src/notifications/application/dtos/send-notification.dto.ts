@@ -59,7 +59,7 @@ export class SendIndividualNotificationDto {
   @ApiProperty({
     description: 'Notification delivery channel',
     enum: NotificationChannelType,
-    example: NotificationChannelType.EMAIL
+    example: NotificationChannelType.WHATSAPP
   })
   @IsEnum(NotificationChannelType)
   channel: NotificationChannelType

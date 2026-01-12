@@ -40,7 +40,8 @@ services:
     image: devlikeapro/waha:latest
     restart: unless-stopped
     environment:
-      - WHATSAPP_HOOK_URL=http://chat-ai:3000/chatHistory/webhook/waha
+      - WHATSAPP_HOOK_URL=      - WHATSAPP_HOOK_URL=http://chat-ai:3000/http://chat-ai:3000/webhooks/waha/message
+
       - WHATSAPP_HOOK_EVENTS=message
       - WHATSAPP_DEFAULT_ENGINE=WEBJS
       - WHATSAPP_START_SESSION=default

@@ -64,7 +64,7 @@ export class SendNotificationUseCase {
     ] as [NotificationChannelType, NotificationDeliveryStrategy][])
   }
 
-  async sendIndividual(
+  async sendMessage(
     dto: SendIndividualNotificationDto
   ): Promise<SendNotificationResult> {
     try {
@@ -146,7 +146,7 @@ export class SendNotificationUseCase {
     }
   }
 
-  async sendBatch(
+  async sendBatchMessages(
     dto: SendBatchNotificationDto
   ): Promise<SendNotificationResult> {
     try {
