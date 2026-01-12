@@ -6,13 +6,15 @@ WORKDIR /app
 
 # Install dependencies
 FROM base AS deps
+RUN apk add --no-cache python3 make g++
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --config.ignore-scripts=false
 
 # Build stage
 FROM base AS build
+RUN apk add --no-cache python3 make g++
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --config.ignore-scripts=false
 COPY . .
 RUN pnpm run build
 

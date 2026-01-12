@@ -18,7 +18,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Install all dependencies (including devDependencies for development)
-RUN pnpm install --frozen-lockfile
+# Note: --config.ignore-scripts=false allows native modules like better-sqlite3 to build
+RUN pnpm install --frozen-lockfile --config.ignore-scripts=false
 
 # Copy source code (will be overridden by volume mount in docker-compose.dev.yml)
 COPY . .
