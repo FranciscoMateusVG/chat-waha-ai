@@ -72,7 +72,38 @@ export class DrizzleDatabaseService implements OnModuleInit, OnModuleDestroy {
       `)
       sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_whatsapp_accounts_user_id ON whatsapp_accounts (user_id)`)
 
-      console.log('Auth tables ensured')
+      // Create knowledge_entries table with user_id
+      sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS knowledge_entries (
+          id text PRIMARY KEY NOT NULL,
+          user_id text NOT NULL,
+          type text NOT NULL,
+          topic text NOT NULL,
+          key text NOT NULL,
+          content text NOT NULL,
+          tags text,
+          metadata text,
+          created_at integer DEFAULT (unixepoch()) NOT NULL,
+          updated_at integer DEFAULT (unixepoch()) NOT NULL,
+          UNIQUE(user_id, key)
+        )
+      `)
+      sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_knowledge_entries_user_id ON knowledge_entries (user_id)`)
+      sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_knowledge_entries_type ON knowledge_entries (type)`)
+
+      // Create system_prompts table with user_id
+      sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS system_prompts (
+          id text PRIMARY KEY NOT NULL,
+          user_id text NOT NULL UNIQUE,
+          content text NOT NULL,
+          created_at integer DEFAULT (unixepoch()) NOT NULL,
+          updated_at integer DEFAULT (unixepoch()) NOT NULL
+        )
+      `)
+      sqlite.exec(`CREATE INDEX IF NOT EXISTS idx_system_prompts_user_id ON system_prompts (user_id)`)
+
+      console.log('All tables ensured')
     } catch (error) {
       console.error('Failed to ensure auth tables:', error)
     }
