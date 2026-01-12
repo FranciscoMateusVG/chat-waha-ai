@@ -17,7 +17,8 @@ export class SchedulerController {
     this.logger.log('Starting chat history cleanup job')
 
     try {
-      const openChatHistories = await this.chatHistoryRepository.findAllOpenChatHistories()
+      // Use system method that finds all open chat histories across all users
+      const openChatHistories = await this.chatHistoryRepository.findAllOpenChatHistoriesAcrossAllUsers()
       this.logger.log(`Found ${openChatHistories.length} open chat histories`)
 
       let closedCount = 0

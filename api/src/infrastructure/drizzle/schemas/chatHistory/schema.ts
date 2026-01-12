@@ -6,6 +6,7 @@ export const chatHistories = sqliteTable(
   'chat_histories',
   {
     id: text('id').primaryKey(),
+    userId: text('user_id').notNull(), // Owner of this chat history (multi-tenant isolation)
     externalChatId: text('external_chat_id').notNull(), // WhatsApp chat ID
     chatName: text('chat_name').notNull(),
     status: text('status').notNull(), // 'open' | 'closed'
@@ -21,6 +22,7 @@ export const chatHistories = sqliteTable(
       .notNull()
   },
   (table) => ({
+    userIdIdx: index('idx_chat_histories_user_id').on(table.userId),
     externalChatIdIdx: index('idx_chat_histories_external_chat_id').on(
       table.externalChatId
     ),
@@ -28,8 +30,9 @@ export const chatHistories = sqliteTable(
     lastMessageAtIdx: index('idx_chat_histories_last_message_at').on(
       table.lastMessageAt
     ),
-    // Composite index for finding open chats by external ID (most common query)
-    statusExternalChatIdIdx: index('idx_chat_histories_status_external').on(
+    // Composite index for finding open chats by user and external ID (most common query)
+    userStatusExternalIdx: index('idx_chat_histories_user_status_external').on(
+      table.userId,
       table.status,
       table.externalChatId
     )

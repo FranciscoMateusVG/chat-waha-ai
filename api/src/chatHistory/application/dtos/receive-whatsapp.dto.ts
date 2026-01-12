@@ -4,6 +4,14 @@ import { MessageSenderType } from 'src/chatHistory/domain/value-objects'
 
 export class ReceiveWhatsAppMessageDto {
   @ApiProperty({
+    description: 'User ID for multi-tenant isolation',
+    example: 'user-123'
+  })
+  @IsString()
+  @IsNotEmpty()
+  userId: string
+
+  @ApiProperty({
     description: 'External chat identifier from the messaging platform',
     example: 'whatsapp:5511999999999@c.us'
   })

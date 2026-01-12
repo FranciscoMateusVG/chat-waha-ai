@@ -12,6 +12,7 @@ import {
 import { isAiMessage } from 'src/ai/constants'
 import { ReceiveWhatsAppMessageUseCase } from 'src/chatHistory/application/useCases/receive-whatsapp-message.use-case'
 import { WhatsAppClientService } from 'src/infrastructure/waha/waha-client.service'
+import { WhatsappAccountsService } from 'src/whatsappAccounts/whatsapp-accounts.service'
 import { WAHAWebhookPayload } from './waha-payload.interface'
 import { WAHAWebhookMapper } from './waha-webhook.mapper'
 
@@ -21,7 +22,8 @@ export class WAHAWebhookController {
 
   constructor(
     private readonly receiveMessageUseCase: ReceiveWhatsAppMessageUseCase,
-    private readonly wahaClientService: WhatsAppClientService
+    private readonly wahaClientService: WhatsAppClientService,
+    private readonly whatsappAccountsService: WhatsappAccountsService
   ) {}
 
   @Post('message')
@@ -50,10 +52,11 @@ export class WAHAWebhookController {
       // 3. Validate payload (WAHA-specific)
       this.validatePayload(payload)
 
-      // 4. Map WAHA payload → Generic DTO
+      // 4. Map WAHA payload → Generic DTO (includes userId lookup)
       const dto = await WAHAWebhookMapper.toReceiveMessageDto(
         payload,
-        this.wahaClientService
+        this.wahaClientService,
+        this.whatsappAccountsService
       )
 
       // 5. Call use case (generic, domain-agnostic)

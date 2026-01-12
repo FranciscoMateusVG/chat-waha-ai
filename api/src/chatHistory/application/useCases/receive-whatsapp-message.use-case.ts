@@ -42,9 +42,10 @@ export class ReceiveWhatsAppMessageUseCase {
     dto: ReceiveWhatsAppMessageDto
   ): Promise<ReceiveWhatsAppMessageResult> {
     try {
-      // Find chat history by external chat id, the repo makes sure to return only one open chat history
+      // Find chat history by external chat id for this user
       const chatHistoryInDb =
         await this.chatHistoryRepository.findOpenChatHistoryByExternalChatId(
+          dto.userId,
           dto.externalChatId
         )
 
@@ -87,6 +88,7 @@ export class ReceiveWhatsAppMessageUseCase {
   private createNewChatHistory(dto: ReceiveWhatsAppMessageDto) {
     const externalChatId = new WAHAExternalChatId(dto.externalChatId)
     const newChatHistory = ChatHistory.create(
+      dto.userId,
       externalChatId,
       dto.chatName,
       new MessageContent(dto.message),

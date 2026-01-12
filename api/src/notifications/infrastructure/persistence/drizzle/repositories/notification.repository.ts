@@ -194,6 +194,7 @@ export class DrizzleNotificationRepository implements NotificationRepository {
     // Create a type that ensures all fields are explicitly mapped
     const record = {
       id: notification.id.value,
+      userId: notification.userId,
       recipientId: notification.recipientId.value,
       title: notification.content.title,
       body: notification.content.body,
@@ -226,6 +227,7 @@ export class DrizzleNotificationRepository implements NotificationRepository {
 
     const props: NotificationProps = {
       id: new NotificationId(dbRecord.id),
+      userId: dbRecord.userId,
       recipientId: new UserId(dbRecord.recipientId),
       content: new NotificationContent(dbRecord.title, dbRecord.body, metadata),
       channel: new NotificationChannel(dbRecord.channel),

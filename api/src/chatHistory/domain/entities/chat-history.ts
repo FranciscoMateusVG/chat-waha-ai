@@ -9,6 +9,7 @@ import { ChatMessage } from './chat-message'
 
 export class ChatHistory {
   private readonly id: ChatHistoryId
+  private readonly userId: string // Owner of this chat history (multi-tenant isolation)
   private readonly externalChatId: ExternalChatId
   private readonly chatName: string
   private status: ChatStatus
@@ -20,6 +21,7 @@ export class ChatHistory {
 
   constructor(props: {
     id: ChatHistoryId
+    userId: string
     externalChatId: ExternalChatId
     chatName: string
     status: ChatStatus
@@ -36,6 +38,7 @@ export class ChatHistory {
     )
 
     this.id = props.id
+    this.userId = props.userId
     this.externalChatId = props.externalChatId
     this.chatName = props.chatName
     this.status = props.status
@@ -47,6 +50,7 @@ export class ChatHistory {
   }
 
   static create(
+    userId: string,
     externalChatId: ExternalChatId,
     chatName: string,
     messageContent: MessageContent,
@@ -55,6 +59,7 @@ export class ChatHistory {
   ): ChatHistory {
     return new ChatHistory({
       id: id ?? new ChatHistoryId(),
+      userId,
       externalChatId,
       chatName,
       status: ChatStatus.open(),
@@ -194,6 +199,9 @@ export class ChatHistory {
 
   getId() {
     return this.id
+  }
+  getUserId() {
+    return this.userId
   }
   getExternalChatId() {
     return this.externalChatId

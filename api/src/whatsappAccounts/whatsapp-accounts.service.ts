@@ -13,6 +13,18 @@ export class WhatsappAccountsService {
     return db.select().from(whatsappAccounts).where(eq(whatsappAccounts.userId, userId)).all()
   }
 
+  // Used by webhook to look up userId from session (session = account id)
+  async findUserIdBySession(session: string): Promise<string | null> {
+    const db = this.dbService.getDatabase()
+    const account = await db
+      .select({ userId: whatsappAccounts.userId })
+      .from(whatsappAccounts)
+      .where(eq(whatsappAccounts.id, session))
+      .get()
+
+    return account?.userId || null
+  }
+
   async findById(id: string, userId: string): Promise<WhatsappAccount> {
     const db = this.dbService.getDatabase()
     const account = await db

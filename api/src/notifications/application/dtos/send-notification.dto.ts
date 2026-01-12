@@ -29,6 +29,14 @@ export class RecipientDto {
 
 export class SendIndividualNotificationDto {
   @ApiProperty({
+    description: 'User ID for multi-tenant isolation (owner of this notification)',
+    example: 'user-owner-123'
+  })
+  @IsString()
+  @IsNotEmpty()
+  userId: string
+
+  @ApiProperty({
     description: 'Notification title',
     example: 'Welcome to our platform!',
     maxLength: 255
@@ -81,6 +89,14 @@ export class SendIndividualNotificationDto {
 }
 
 export class SendBatchNotificationDto {
+  @ApiProperty({
+    description: 'User ID for multi-tenant isolation (owner of this notification batch)',
+    example: 'user-owner-123'
+  })
+  @IsString()
+  @IsNotEmpty()
+  userId: string
+
   @ApiProperty({
     description: 'Notification title',
     example: 'System Maintenance Notice',

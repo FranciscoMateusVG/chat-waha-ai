@@ -38,15 +38,17 @@ export class DrizzleChatHistoryRepository implements ChatHistoryRepository {
   }
 
   async findOpenChatHistoryByExternalChatId(
+    userId: string,
     externalChatId: string
   ): Promise<ChatHistory | null> {
     try {
-      // 1. Find the chat history
+      // 1. Find the chat history for this user
       const chatHistoryRecord = await this.db
         .select()
         .from(chatHistories)
         .where(
           and(
+            eq(chatHistories.userId, userId),
             eq(chatHistories.externalChatId, externalChatId),
             eq(chatHistories.status, 'open')
           )
@@ -75,12 +77,17 @@ export class DrizzleChatHistoryRepository implements ChatHistoryRepository {
     }
   }
 
-  async findAllOpenChatHistories(): Promise<ChatHistory[]> {
+  async findAllOpenChatHistories(userId: string): Promise<ChatHistory[]> {
     try {
       const chatHistoryRecords = await this.db
         .select()
         .from(chatHistories)
-        .where(eq(chatHistories.status, 'open'))
+        .where(
+          and(
+            eq(chatHistories.userId, userId),
+            eq(chatHistories.status, 'open')
+          )
+        )
 
       const result: ChatHistory[] = []
 
@@ -108,11 +115,12 @@ export class DrizzleChatHistoryRepository implements ChatHistoryRepository {
     }
   }
 
-  async findAllChatHistories(): Promise<ChatHistory[]> {
+  async findAllChatHistories(userId: string): Promise<ChatHistory[]> {
     try {
       const chatHistoryRecords = await this.db
         .select()
         .from(chatHistories)
+        .where(eq(chatHistories.userId, userId))
         .orderBy(desc(chatHistories.lastMessageAt))
 
       const result: ChatHistory[] = []
@@ -142,21 +150,24 @@ export class DrizzleChatHistoryRepository implements ChatHistoryRepository {
   }
 
   async findAllChatHistoriesPaginated(
+    userId: string,
     params: PaginationParams
   ): Promise<PaginatedResult<ChatHistory>> {
     try {
       const { page, limit } = params
       const offset = (page - 1) * limit
 
-      // Get total count
+      // Get total count for this user
       const [{ count: totalCount }] = await this.db
         .select({ count: count() })
         .from(chatHistories)
+        .where(eq(chatHistories.userId, userId))
 
-      // Get paginated records
+      // Get paginated records for this user
       const chatHistoryRecords = await this.db
         .select()
         .from(chatHistories)
+        .where(eq(chatHistories.userId, userId))
         .orderBy(desc(chatHistories.lastMessageAt))
         .limit(limit)
         .offset(offset)
@@ -192,12 +203,20 @@ export class DrizzleChatHistoryRepository implements ChatHistoryRepository {
     }
   }
 
-  async findChatHistoryById(id: string): Promise<ChatHistory | null> {
+  async findChatHistoryById(
+    userId: string,
+    id: string
+  ): Promise<ChatHistory | null> {
     try {
       const chatHistoryRecord = await this.db
         .select()
         .from(chatHistories)
-        .where(eq(chatHistories.id, id))
+        .where(
+          and(
+            eq(chatHistories.userId, userId),
+            eq(chatHistories.id, id)
+          )
+        )
         .limit(1)
 
       if (chatHistoryRecord.length === 0) {
@@ -262,11 +281,46 @@ export class DrizzleChatHistoryRepository implements ChatHistoryRepository {
     }
   }
 
+  // System method for scheduler - finds all open chat histories across all users
+  async findAllOpenChatHistoriesAcrossAllUsers(): Promise<ChatHistory[]> {
+    try {
+      const chatHistoryRecords = await this.db
+        .select()
+        .from(chatHistories)
+        .where(eq(chatHistories.status, 'open'))
+
+      const result: ChatHistory[] = []
+
+      for (const chatHistoryRecord of chatHistoryRecords) {
+        const messagesRecords = await this.db
+          .select()
+          .from(chatMessages)
+          .where(eq(chatMessages.chatHistoryId, chatHistoryRecord.id))
+          .orderBy(chatMessages.timestamp)
+
+        const chatHistory = this.mapToDomainEntity(
+          chatHistoryRecord,
+          messagesRecords
+        )
+        result.push(chatHistory)
+      }
+
+      return result
+    } catch (error) {
+      this.logger.error(
+        `Failed to find all open chat histories across all users: ${error.message}`,
+        error.stack
+      )
+      throw error
+    }
+  }
+
   // ==================== MAPPING ====================
 
   private mapChatHistoryToDb(chatHistory: ChatHistory): ChatHistoryInsert {
     return {
       id: chatHistory.getId().value,
+      userId: chatHistory.getUserId(),
       externalChatId: chatHistory.getExternalChatId().value,
       chatName: chatHistory.getChatName(),
       status: chatHistory.getStatus().value,
@@ -305,6 +359,7 @@ export class DrizzleChatHistoryRepository implements ChatHistoryRepository {
 
     return new ChatHistory({
       id: new ChatHistoryId(chatHistoryRecord.id),
+      userId: chatHistoryRecord.userId,
       externalChatId: new WAHAExternalChatId(chatHistoryRecord.externalChatId),
       chatName: chatHistoryRecord.chatName,
       status: this.mapChatStatusToDomain(chatHistoryRecord.status),
