@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { CqrsModule } from '@nestjs/cqrs'
 import { WhatsAppClientService } from 'src/infrastructure/waha/waha-client.service'
 import { InfrastructureModule } from '../infrastructure/infrastructure.module'
+import { WhatsappAccountsModule } from '../whatsappAccounts/whatsapp-accounts.module'
 import { ReceiveWhatsAppMessageUseCase } from './application/useCases/receive-whatsapp-message.use-case'
 import { ChatHistoryController } from './controllers/chatHistory.controller'
 import { SchedulerController } from './controllers/scheduler.controller'
@@ -10,7 +11,7 @@ import { DrizzleChatHistoryRepository } from './infrastructure/drizzle/repositor
 import { CHAT_HISTORY_REPOSITORY } from './tokens'
 
 @Module({
-  imports: [CqrsModule, InfrastructureModule],
+  imports: [CqrsModule, InfrastructureModule, WhatsappAccountsModule],
   controllers: [WAHAWebhookController, ChatHistoryController],
   providers: [
     ReceiveWhatsAppMessageUseCase,

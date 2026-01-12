@@ -9,6 +9,7 @@ import { BatchId, NotificationId, UserId } from './ids'
 
 export interface NotificationProps {
   id: NotificationId
+  userId: string // Owner of this notification (multi-tenant isolation)
   recipientId: UserId
   content: NotificationContent
   channel: NotificationChannel
@@ -21,6 +22,7 @@ export interface NotificationProps {
 
 export class Notification extends AggregateRoot {
   private readonly _id: NotificationId
+  private readonly _userId: string // Owner of this notification (multi-tenant isolation)
   private readonly _recipientId: UserId
   private readonly _content: NotificationContent
   private readonly _channel: NotificationChannel
@@ -34,6 +36,7 @@ export class Notification extends AggregateRoot {
   constructor(props: NotificationProps) {
     super()
     this._id = props.id
+    this._userId = props.userId
     this._recipientId = props.recipientId
     this._content = props.content
     this._channel = props.channel
@@ -46,6 +49,10 @@ export class Notification extends AggregateRoot {
 
   get id(): NotificationId {
     return this._id
+  }
+
+  get userId(): string {
+    return this._userId
   }
 
   get recipientId(): UserId {
@@ -142,6 +149,7 @@ export class Notification extends AggregateRoot {
   }
 
   static create(
+    userId: string,
     recipientId: UserId,
     content: NotificationContent,
     channel: NotificationChannel,
@@ -149,6 +157,7 @@ export class Notification extends AggregateRoot {
   ): Notification {
     const notification = new Notification({
       id: NotificationId.generate(),
+      userId,
       recipientId,
       content,
       channel,

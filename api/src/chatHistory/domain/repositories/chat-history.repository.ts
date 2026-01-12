@@ -14,13 +14,18 @@ export interface PaginatedResult<T> {
 
 export interface ChatHistoryRepository {
   findOpenChatHistoryByExternalChatId(
+    userId: string,
     externalChatId: string
-  ): Promise<ChatHistory>
-  findAllOpenChatHistories(): Promise<ChatHistory[]>
-  findAllChatHistories(): Promise<ChatHistory[]>
+  ): Promise<ChatHistory | null>
+  findAllOpenChatHistories(userId: string): Promise<ChatHistory[]>
+  findAllChatHistories(userId: string): Promise<ChatHistory[]>
   findAllChatHistoriesPaginated(
+    userId: string,
     params: PaginationParams
   ): Promise<PaginatedResult<ChatHistory>>
-  findChatHistoryById(id: string): Promise<ChatHistory | null>
+  findChatHistoryById(userId: string, id: string): Promise<ChatHistory | null>
   save(chatHistory: ChatHistory): Promise<void>
+
+  // System methods (for internal processes like scheduler)
+  findAllOpenChatHistoriesAcrossAllUsers(): Promise<ChatHistory[]>
 }

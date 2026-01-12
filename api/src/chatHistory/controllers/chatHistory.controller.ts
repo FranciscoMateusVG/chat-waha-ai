@@ -1,6 +1,8 @@
 import {
+  BadRequestException,
   Controller,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Inject,
@@ -13,6 +15,7 @@ import {
 } from '@nestjs/common'
 import {
   ApiBadRequestResponse,
+  ApiHeader,
   ApiNotFoundResponse,
   ApiOperation,
   ApiParam,
@@ -35,8 +38,16 @@ import {
 import { ChatHistoryRepository } from '../domain/repositories/chat-history.repository'
 import { CHAT_HISTORY_REPOSITORY } from '../tokens'
 
+const USER_ID_HEADER = 'x-user-id'
+
 @ApiTags('Chat History')
 @ApiAuth()
+@ApiHeader({
+  name: USER_ID_HEADER,
+  description: 'User ID for multi-tenant isolation',
+  required: true,
+  example: 'user-123'
+})
 @Controller('chat-history')
 export class ChatHistoryController {
   private readonly logger = new Logger(ChatHistoryController.name)
@@ -45,6 +56,13 @@ export class ChatHistoryController {
     @Inject(CHAT_HISTORY_REPOSITORY)
     private readonly chatHistoryRepository: ChatHistoryRepository
   ) {}
+
+  private validateUserId(userId: string | undefined): string {
+    if (!userId) {
+      throw new BadRequestException('X-User-ID header is required')
+    }
+    return userId
+  }
 
   @Get()
   @ApiOperation({
@@ -70,17 +88,19 @@ export class ChatHistoryController {
     type: PaginatedResponseDto
   })
   async getAllChatHistories(
+    @Headers(USER_ID_HEADER) userId: string,
     @Query() paginationQuery: PaginationQueryDto
   ): Promise<PaginatedResponseDto<ChatHistoryDto>> {
     try {
+      const validUserId = this.validateUserId(userId)
       const page = paginationQuery.page || 1
       const limit = paginationQuery.limit || 10
 
       const paginatedResult =
-        await this.chatHistoryRepository.findAllChatHistoriesPaginated({
-          page,
-          limit
-        })
+        await this.chatHistoryRepository.findAllChatHistoriesPaginated(
+          validUserId,
+          { page, limit }
+        )
 
       const chatHistoriesDto: ChatHistoryDto[] = paginatedResult.items.map(
         (chatHistory) => ({
@@ -139,11 +159,13 @@ export class ChatHistoryController {
     description: 'Chat history not found'
   })
   async getChatHistoryById(
+    @Headers(USER_ID_HEADER) userId: string,
     @Param('id') id: string
   ): Promise<ApiResponseDto<ChatHistoryWithMessagesDto>> {
     try {
+      const validUserId = this.validateUserId(userId)
       const chatHistory =
-        await this.chatHistoryRepository.findChatHistoryById(id)
+        await this.chatHistoryRepository.findChatHistoryById(validUserId, id)
 
       if (!chatHistory) {
         throw new NotFoundException(`Chat history with id ${id} not found`)
@@ -203,11 +225,13 @@ export class ChatHistoryController {
     description: 'Chat history not found'
   })
   async getMessages(
+    @Headers(USER_ID_HEADER) userId: string,
     @Param('id') id: string
   ): Promise<ApiResponseDto<ChatMessageDto[]>> {
     try {
+      const validUserId = this.validateUserId(userId)
       const chatHistory =
-        await this.chatHistoryRepository.findChatHistoryById(id)
+        await this.chatHistoryRepository.findChatHistoryById(validUserId, id)
 
       if (!chatHistory) {
         throw new NotFoundException(`Chat history with id ${id} not found`)
@@ -261,11 +285,13 @@ export class ChatHistoryController {
     description: 'Chat is already closed'
   })
   async closeChatHistory(
+    @Headers(USER_ID_HEADER) userId: string,
     @Param('id') id: string
   ): Promise<ApiResponseDto<{ message: string }>> {
     try {
+      const validUserId = this.validateUserId(userId)
       const chatHistory =
-        await this.chatHistoryRepository.findChatHistoryById(id)
+        await this.chatHistoryRepository.findChatHistoryById(validUserId, id)
 
       if (!chatHistory) {
         throw new NotFoundException(`Chat history with id ${id} not found`)

@@ -6,6 +6,7 @@ export const notifications = sqliteTable(
   'notifications',
   {
     id: text('id').primaryKey(),
+    userId: text('user_id').notNull(), // Owner of this notification (multi-tenant isolation)
     recipientId: text('recipient_id').notNull(),
     title: text('title').notNull(),
     body: text('body').notNull(),
@@ -24,6 +25,7 @@ export const notifications = sqliteTable(
       .notNull()
   },
   (table) => ({
+    userIdIdx: index('idx_notifications_user_id').on(table.userId),
     recipientIdx: index('idx_notifications_recipient').on(table.recipientId),
     statusIdx: index('idx_notifications_status').on(table.status),
     channelIdx: index('idx_notifications_channel').on(table.channel),
@@ -36,6 +38,7 @@ export const notificationBatches = sqliteTable(
   'notification_batches',
   {
     id: text('id').primaryKey(),
+    userId: text('user_id').notNull(), // Owner of this batch (multi-tenant isolation)
     channel: text('channel').notNull(),
     status: text('status').notNull(),
     notificationCount: integer('notification_count').notNull(),
@@ -49,6 +52,7 @@ export const notificationBatches = sqliteTable(
       .notNull()
   },
   (table) => ({
+    userIdIdx: index('idx_notification_batches_user_id').on(table.userId),
     statusIdx: index('idx_notification_batches_status').on(table.status),
     channelIdx: index('idx_notification_batches_channel').on(table.channel)
   })
@@ -59,6 +63,7 @@ export const notificationHistory = sqliteTable(
   'notification_history',
   {
     notificationId: text('notification_id').primaryKey(),
+    userId: text('user_id').notNull(), // Owner of this notification (multi-tenant isolation)
     recipientId: text('recipient_id').notNull(),
     channel: text('channel').notNull(),
     status: text('status').notNull(),
@@ -70,6 +75,7 @@ export const notificationHistory = sqliteTable(
     failedReason: text('failed_reason')
   },
   (table) => ({
+    userIdIdx: index('idx_notification_history_user_id').on(table.userId),
     recipientIdx: index('idx_notification_history_recipient').on(
       table.recipientId
     ),
@@ -85,7 +91,8 @@ export const notificationHistory = sqliteTable(
 export const notificationStats = sqliteTable(
   'notification_stats',
   {
-    id: text('id').primaryKey(), // date-channel combination
+    id: text('id').primaryKey(), // user-date-channel combination
+    userId: text('user_id').notNull(), // Owner of these stats (multi-tenant isolation)
     date: text('date').notNull(), // YYYY-MM-DD format
     channel: text('channel').notNull(),
     totalSent: integer('total_sent').default(0).notNull(),
@@ -96,9 +103,11 @@ export const notificationStats = sqliteTable(
       .notNull()
   },
   (table) => ({
+    userIdIdx: index('idx_notification_stats_user_id').on(table.userId),
     dateIdx: index('idx_notification_stats_date').on(table.date),
     channelIdx: index('idx_notification_stats_channel').on(table.channel),
-    dateChannelIdx: index('idx_notification_stats_date_channel').on(
+    userDateChannelIdx: index('idx_notification_stats_user_date_channel').on(
+      table.userId,
       table.date,
       table.channel
     )

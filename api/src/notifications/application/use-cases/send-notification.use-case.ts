@@ -82,8 +82,9 @@ export class SendNotificationUseCase {
 
       contactInfo.validate()
 
-      // Create notification aggregate
+      // Create notification aggregate with owner userId
       const notification = Notification.create(
+        dto.userId,
         recipientId,
         content,
         channel,
@@ -173,7 +174,7 @@ export class SendNotificationUseCase {
 
         const contactInfo = new ContactInfoClass(recipient.contactInfo)
 
-        return Notification.create(recipientId, content, channel, contactInfo)
+        return Notification.create(dto.userId, recipientId, content, channel, contactInfo)
       })
 
       // Create batch aggregate
