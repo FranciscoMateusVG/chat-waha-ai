@@ -1,7 +1,6 @@
 export enum NotificationChannelType {
   SYSTEM = 'system',
   WHATSAPP = 'whatsapp',
-  EMAIL = 'email',
 }
 
 export class NotificationChannel {
@@ -24,8 +23,6 @@ export class NotificationChannel {
 
   supportsBatchDelivery(): boolean {
     switch (this._value) {
-      case NotificationChannelType.EMAIL:
-        return true;
       case NotificationChannelType.WHATSAPP:
         return true;
       case NotificationChannelType.SYSTEM:
@@ -39,7 +36,6 @@ export class NotificationChannel {
     switch (this._value) {
       case NotificationChannelType.WHATSAPP:
         return true;
-      case NotificationChannelType.EMAIL:
       case NotificationChannelType.SYSTEM:
         return false;
       default:
@@ -61,9 +57,5 @@ export class NotificationChannel {
 
   static whatsapp(): NotificationChannel {
     return new NotificationChannel(NotificationChannelType.WHATSAPP);
-  }
-
-  static email(): NotificationChannel {
-    return new NotificationChannel(NotificationChannelType.EMAIL);
   }
 }

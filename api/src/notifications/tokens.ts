@@ -5,7 +5,6 @@ export const NOTIFICATION_STATS_REPOSITORY = 'NOTIFICATION_STATS_REPOSITORY'
 export const NOTIFICATION_BATCH_REPOSITORY = 'NOTIFICATION_BATCH_REPOSITORY'
 
 // External Service Tokens
-export const EMAIL_CLIENT = 'EMAIL_CLIENT'
 export const WHATSAPP_CLIENT = 'WHATSAPP_CLIENT'
 
 // Database Token (kept for consistency)
