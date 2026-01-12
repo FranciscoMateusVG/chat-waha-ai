@@ -26,7 +26,7 @@ export class GetNotificationHistoryDto {
   @ApiPropertyOptional({
     description: 'Filter by notification channel',
     enum: NotificationChannelType,
-    example: NotificationChannelType.EMAIL
+    example: NotificationChannelType.WHATSAPP
   })
   @IsOptional()
   @IsEnum(NotificationChannelType)
@@ -88,7 +88,7 @@ export class GetNotificationStatsDto {
   @ApiPropertyOptional({
     description: 'Filter statistics by notification channel',
     enum: NotificationChannelType,
-    example: NotificationChannelType.EMAIL
+    example: NotificationChannelType.WHATSAPP
   })
   @IsOptional()
   @IsEnum(NotificationChannelType)
