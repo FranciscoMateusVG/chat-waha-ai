@@ -1,263 +1,186 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { whatsappAccountsApi } from '../services/api';
-import type { WhatsappAccount } from '../types/api';
-import { ChatHistoryList } from '../components/ChatHistory';
-import { KnowledgeManager } from '../components/Knowledge';
-import { SystemPromptEditor } from '../components/SystemPrompt';
-import './Dashboard.css';
+import { useEffect, useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { useAuth } from '@/contexts/AuthContext'
+import { api } from '@/services/api'
+import { Bell, MessageSquare, CheckCircle, XCircle, Clock, TrendingUp, LogOut } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
-type Tab = 'accounts' | 'chats' | 'knowledge' | 'system-prompt';
+interface NotificationStats {
+  total: number
+  sent: number
+  delivered: number
+  failed: number
+  pending: number
+}
+
+interface ChatHistory {
+  id: string
+  chatName: string
+  status: string
+  messageCount: number
+  lastMessageAt?: string
+}
 
 export function Dashboard() {
-  const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('accounts');
-  const [accounts, setAccounts] = useState<WhatsappAccount[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  // Form state
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formName, setFormName] = useState('');
-  const [formPhone, setFormPhone] = useState('');
-  const [formStatus, setFormStatus] = useState<'pending' | 'active' | 'inactive'>('pending');
-  const [formLoading, setFormLoading] = useState(false);
+  const { user, logout } = useAuth()
+  const [stats, setStats] = useState<NotificationStats | null>(null)
+  const [recentChats, setRecentChats] = useState<ChatHistory[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (activeTab === 'accounts') {
-      loadAccounts();
-    }
-  }, [activeTab]);
+    const fetchData = async () => {
+      try {
+        const [statsRes, chatsRes] = await Promise.all([
+          api.get('notifications/stats').catch(() => ({ data: { success: false } })),
+          api.get('chat-history?limit=5').catch(() => ({ data: { success: false } })),
+        ])
 
-  const loadAccounts = async () => {
-    try {
-      setLoading(true);
-      const data = await whatsappAccountsApi.getAll();
-      setAccounts(data);
-      setError('');
-    } catch {
-      setError('Erro ao carregar contas');
-    } finally {
-      setLoading(false);
+        if (statsRes.data.success) {
+          setStats(statsRes.data.data)
+        }
+
+        if (chatsRes.data.success) {
+          setRecentChats(chatsRes.data.data || [])
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  };
+
+    fetchData()
+  }, [])
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await logout()
     } catch {
-      console.error('Erro ao sair');
+      console.error('Erro ao sair')
     }
-  };
+  }
 
-  const resetForm = () => {
-    setFormName('');
-    setFormPhone('');
-    setFormStatus('pending');
-    setEditingId(null);
-    setShowForm(false);
-  };
+  const statCards = [
+    {
+      title: 'Total de Notificações',
+      value: stats?.total ?? 0,
+      icon: Bell,
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-400/10',
+    },
+    {
+      title: 'Enviadas',
+      value: stats?.sent ?? 0,
+      icon: TrendingUp,
+      color: 'text-green-400',
+      bgColor: 'bg-green-400/10',
+    },
+    {
+      title: 'Entregues',
+      value: stats?.delivered ?? 0,
+      icon: CheckCircle,
+      color: 'text-emerald-400',
+      bgColor: 'bg-emerald-400/10',
+    },
+    {
+      title: 'Falhas',
+      value: stats?.failed ?? 0,
+      icon: XCircle,
+      color: 'text-red-400',
+      bgColor: 'bg-red-400/10',
+    },
+    {
+      title: 'Pendentes',
+      value: stats?.pending ?? 0,
+      icon: Clock,
+      color: 'text-yellow-400',
+      bgColor: 'bg-yellow-400/10',
+    },
+  ]
 
-  const handleEdit = (account: WhatsappAccount) => {
-    setFormName(account.name);
-    setFormPhone(account.phoneNumber || '');
-    setFormStatus(account.status);
-    setEditingId(account.id);
-    setShowForm(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormLoading(true);
-
-    try {
-      if (editingId) {
-        await whatsappAccountsApi.update(editingId, {
-          name: formName,
-          phoneNumber: formPhone || undefined,
-          status: formStatus
-        });
-      } else {
-        await whatsappAccountsApi.create({
-          name: formName,
-          phoneNumber: formPhone || undefined
-        });
-      }
-      resetForm();
-      loadAccounts();
-    } catch {
-      setError('Erro ao salvar conta');
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta conta?')) return;
-
-    try {
-      await whatsappAccountsApi.delete(id);
-      loadAccounts();
-    } catch {
-      setError('Erro ao excluir conta');
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'active': return 'Ativo';
-      case 'inactive': return 'Inativo';
-      default: return 'Pendente';
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="dashboard">
-      <header className="dashboard-header">
-        <div className="header-left">
-          <h1>Chat WAHA</h1>
+    <div className="space-y-6">
+      {/* User Info */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Bem-vindo, {user?.name || user?.email}</h1>
+          <p className="text-muted-foreground">Painel de controle do Chat WAHA</p>
         </div>
-        <div className="header-right">
-          <span className="user-info">
-            {user?.name || user?.email}
-          </span>
-          <button className="logout-btn" onClick={handleLogout}>
-            Sair
-          </button>
-        </div>
-      </header>
+        <Button variant="outline" onClick={handleLogout} className="gap-2">
+          <LogOut className="h-4 w-4" />
+          Sair
+        </Button>
+      </div>
 
-      <nav className="dashboard-nav">
-        <button
-          className={activeTab === 'accounts' ? 'active' : ''}
-          onClick={() => setActiveTab('accounts')}
-        >
-          Contas WhatsApp
-        </button>
-        <button
-          className={activeTab === 'chats' ? 'active' : ''}
-          onClick={() => setActiveTab('chats')}
-        >
-          Conversas
-        </button>
-        <button
-          className={activeTab === 'knowledge' ? 'active' : ''}
-          onClick={() => setActiveTab('knowledge')}
-        >
-          Conhecimento
-        </button>
-        <button
-          className={activeTab === 'system-prompt' ? 'active' : ''}
-          onClick={() => setActiveTab('system-prompt')}
-        >
-          System Prompt
-        </button>
-      </nav>
-
-      <main className="dashboard-content">
-        {activeTab === 'accounts' && (
-          <div className="accounts-section">
-            <div className="section-header">
-              <h2>Contas WhatsApp</h2>
-              <button className="add-btn" onClick={() => setShowForm(true)}>
-                + Nova Conta
-              </button>
-            </div>
-
-            {error && <div className="error">{error}</div>}
-
-            {showForm && (
-              <form className="account-form" onSubmit={handleSubmit}>
-                <h3>{editingId ? 'Editar Conta' : 'Nova Conta'}</h3>
-                <div className="form-group">
-                  <label htmlFor="name">Nome</label>
-                  <input
-                    id="name"
-                    type="text"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder="Nome da conta"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="phone">Telefone</label>
-                  <input
-                    id="phone"
-                    type="text"
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
-                    placeholder="+55 11 99999-9999"
-                  />
-                </div>
-                {editingId && (
-                  <div className="form-group">
-                    <label htmlFor="status">Status</label>
-                    <select
-                      id="status"
-                      value={formStatus}
-                      onChange={(e) => setFormStatus(e.target.value as 'pending' | 'active' | 'inactive')}
-                    >
-                      <option value="pending">Pendente</option>
-                      <option value="active">Ativo</option>
-                      <option value="inactive">Inativo</option>
-                    </select>
-                  </div>
-                )}
-                <div className="form-actions">
-                  <button type="button" className="cancel-btn" onClick={resetForm}>
-                    Cancelar
-                  </button>
-                  <button type="submit" className="submit-btn" disabled={formLoading}>
-                    {formLoading ? 'Salvando...' : 'Salvar'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {loading ? (
-              <div className="loading">Carregando...</div>
-            ) : accounts.length === 0 ? (
-              <div className="no-data">
-                Nenhuma conta cadastrada. Clique em "Nova Conta" para adicionar.
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        {statCards.map((stat) => (
+          <Card key={stat.title} className="border-border/50 bg-card/50 backdrop-blur">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {stat.title}
+              </CardTitle>
+              <div className={`rounded-lg p-2 ${stat.bgColor}`}>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
               </div>
-            ) : (
-              <div className="accounts-list">
-                {accounts.map((account) => (
-                  <div key={account.id} className="account-item">
-                    <div className="account-info">
-                      <div className="account-name">{account.name}</div>
-                      <div className="account-phone">{account.phoneNumber || 'Sem telefone'}</div>
-                    </div>
-                    <div className="account-status">
-                      <span className={`status ${account.status}`}>
-                        {getStatusLabel(account.status)}
-                      </span>
-                    </div>
-                    <div className="account-actions">
-                      <button className="edit-btn" onClick={() => handleEdit(account)}>
-                        Editar
-                      </button>
-                      <button className="delete-btn" onClick={() => handleDelete(account.id)}>
-                        Excluir
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value.toLocaleString('pt-BR')}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Recent Chats */}
+      <Card className="border-border/50 bg-card/50 backdrop-blur">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-primary" />
+            <CardTitle>Conversas Recentes</CardTitle>
           </div>
-        )}
-
-        {activeTab === 'chats' && <ChatHistoryList />}
-        {activeTab === 'knowledge' && <KnowledgeManager />}
-        {activeTab === 'system-prompt' && <SystemPromptEditor />}
-      </main>
-
-      <footer className="dashboard-footer">
-        <p>Chat WAHA - Sistema de Atendimento via WhatsApp</p>
-      </footer>
+          <CardDescription>Últimas conversas do WhatsApp</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentChats.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Nenhuma conversa encontrada
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {recentChats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className="flex items-center justify-between rounded-lg border border-border/50 bg-background/50 p-4 transition-colors hover:bg-accent/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                      <MessageSquare className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{chat.chatName || 'Chat sem nome'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {chat.messageCount} mensagens
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant={chat.status === 'open' ? 'default' : 'secondary'}>
+                    {chat.status === 'open' ? 'Aberto' : 'Fechado'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }
