@@ -1,36 +1,24 @@
-import { useState } from 'react'
-import './App.css'
-import { api } from './services/api'
-import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Layout } from '@/components/layout/Layout'
+import { Dashboard } from '@/pages/Dashboard'
+import { Notifications } from '@/pages/Notifications'
+import { Chats } from '@/pages/Chats'
+import { Knowledge } from '@/pages/Knowledge'
+import { AITest } from '@/pages/AITest'
 
 function App() {
-  const [response, setResponse] = useState('')
-
-  const getSystemPrompt = async () => {
-    try {
-      const response = await api.get('knowledge/system-prompt')
-      if (response.data.success && response.data.data) {
-        setResponse(response.data.data.content || 'Não há nenhum system prompt.')
-      }
-    } catch (error) {
-      console.error(error)
-      setResponse('Erro ao conectar com a API')
-    }
-  }
-
-  useEffect(() => {
-    getSystemPrompt()
-  }, [])
-
   return (
-    <>
-      <h1>API Response:</h1>
-      <div className="card">
-        <p>
-          {response}
-        </p>
-      </div>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="chats" element={<Chats />} />
+          <Route path="knowledge" element={<Knowledge />} />
+          <Route path="ai-test" element={<AITest />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }
 
