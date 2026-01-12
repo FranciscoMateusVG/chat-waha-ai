@@ -9,13 +9,19 @@ RUN apk add --no-cache \
     libc6-compat \
     curl
 
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
+
+# Copy .npmrc for build script approvals
+COPY .npmrc ./
 
 # Install all dependencies (including devDependencies for development)
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source code (will be overridden by volume mount in docker-compose.dev.yml)
 COPY . .
@@ -24,5 +30,5 @@ COPY . .
 EXPOSE 3000
 
 # Start development server with hot reload
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]
 

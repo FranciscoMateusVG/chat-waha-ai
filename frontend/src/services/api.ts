@@ -1,0 +1,184 @@
+import axios from 'axios';
+import type {
+  ApiResponse,
+  PaginatedResponse,
+  ChatHistory,
+  ChatHistoryWithMessages,
+  ChatMessage,
+  Knowledge,
+  CreateKnowledgeDto,
+  UpdateKnowledgeDto,
+  SystemPrompt,
+  NotificationHistory,
+  NotificationStats,
+  ChannelStats
+} from '../types/api';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_KEY = import.meta.env.VITE_API_KEY || 'dev-api-key-12345';
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: false,
+  headers: {
+    'x-api-key': API_KEY,
+    'Content-Type': 'application/json'
+  }
+});
+
+// Chat History API
+export const chatHistoryApi = {
+  getAll: async (page = 1, limit = 10): Promise<PaginatedResponse<ChatHistory>> => {
+    const response = await api.get<PaginatedResponse<ChatHistory>>('/chat-history', {
+      params: { page, limit }
+    });
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<ApiResponse<ChatHistoryWithMessages>> => {
+    const response = await api.get<ApiResponse<ChatHistoryWithMessages>>(`/chat-history/${id}`);
+    return response.data;
+  },
+
+  getMessages: async (id: string): Promise<ApiResponse<ChatMessage[]>> => {
+    const response = await api.get<ApiResponse<ChatMessage[]>>(`/chat-history/${id}/messages`);
+    return response.data;
+  },
+
+  close: async (id: string): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.patch<ApiResponse<{ message: string }>>(`/chat-history/${id}/close`);
+    return response.data;
+  }
+};
+
+// Knowledge API
+export const knowledgeApi = {
+  getAll: async (page = 1, limit = 10): Promise<PaginatedResponse<Knowledge>> => {
+    const response = await api.get<PaginatedResponse<Knowledge>>('/knowledge/all', {
+      params: { page, limit }
+    });
+    return response.data;
+  },
+
+  create: async (dto: CreateKnowledgeDto): Promise<ApiResponse<{ knowledgeId: string }>> => {
+    const response = await api.post<ApiResponse<{ knowledgeId: string }>>('/knowledge', dto);
+    return response.data;
+  },
+
+  getByTypeAndTopic: async (type: string, topic: string): Promise<ApiResponse<Knowledge | null>> => {
+    const response = await api.get<ApiResponse<Knowledge | null>>(`/knowledge/${encodeURIComponent(type)}/${encodeURIComponent(topic)}`);
+    return response.data;
+  },
+
+  update: async (type: string, topic: string, dto: UpdateKnowledgeDto): Promise<ApiResponse<{ knowledgeId: string }>> => {
+    const response = await api.put<ApiResponse<{ knowledgeId: string }>>(`/knowledge/${encodeURIComponent(type)}/${encodeURIComponent(topic)}`, dto);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.delete<ApiResponse<{ message: string }>>(`/knowledge/id/${id}`);
+    return response.data;
+  },
+
+  getTypes: async (): Promise<ApiResponse<string[]>> => {
+    const response = await api.get<ApiResponse<string[]>>('/knowledge/types');
+    return response.data;
+  },
+
+  getTopicsByType: async (type: string): Promise<ApiResponse<string[]>> => {
+    const response = await api.get<ApiResponse<string[]>>(`/knowledge/types/${encodeURIComponent(type)}/topics`);
+    return response.data;
+  },
+
+  search: async (query: string, type?: string, tags?: string[]): Promise<ApiResponse<Knowledge[]>> => {
+    const params: Record<string, string> = { query };
+    if (type) params.type = type;
+    if (tags?.length) params.tags = tags.join(',');
+
+    const response = await api.get<ApiResponse<Knowledge[]>>('/knowledge/search', { params });
+    return response.data;
+  },
+
+  getSystemPrompt: async (): Promise<ApiResponse<SystemPrompt | null>> => {
+    const response = await api.get<ApiResponse<SystemPrompt | null>>('/knowledge/system-prompt');
+    return response.data;
+  },
+
+  saveSystemPrompt: async (content: string): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.post<ApiResponse<{ message: string }>>('/knowledge/system-prompt', { content });
+    return response.data;
+  },
+
+  deleteSystemPrompt: async (): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.delete<ApiResponse<{ message: string }>>('/knowledge/system-prompt');
+    return response.data;
+  }
+};
+
+// Notifications API
+export const notificationsApi = {
+  getHistoryByRecipient: async (
+    recipientId: string,
+    params?: {
+      channel?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<{ success: boolean; data: NotificationHistory[] }> => {
+    const response = await api.get<{ success: boolean; data: NotificationHistory[] }>(
+      `/notifications/history/recipient/${recipientId}`,
+      { params }
+    );
+    return response.data;
+  },
+
+  getHistoryByChannel: async (
+    channel: string,
+    params?: {
+      recipientId?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<{ success: boolean; data: NotificationHistory[] }> => {
+    const response = await api.get<{ success: boolean; data: NotificationHistory[] }>(
+      `/notifications/history/channel/${channel}`,
+      { params }
+    );
+    return response.data;
+  },
+
+  getStats: async (params?: {
+    startDate?: string;
+    endDate?: string;
+  }): Promise<{ success: boolean; data: NotificationStats }> => {
+    const response = await api.get<{ success: boolean; data: NotificationStats }>(
+      '/notifications/stats',
+      { params }
+    );
+    return response.data;
+  },
+
+  getChannelStats: async (params?: {
+    startDate?: string;
+    endDate?: string;
+  }): Promise<{ success: boolean; data: ChannelStats[] }> => {
+    const response = await api.get<{ success: boolean; data: ChannelStats[] }>(
+      '/notifications/stats/channels',
+      { params }
+    );
+    return response.data;
+  },
+
+  healthCheck: async (): Promise<{ success: boolean; message: string; timestamp: string }> => {
+    const response = await api.get<{ success: boolean; message: string; timestamp: string }>(
+      '/notifications/health'
+    );
+    return response.data;
+  }
+};

@@ -3,7 +3,6 @@ import { CqrsModule } from '@nestjs/cqrs'
 
 // Domain Services
 import {
-  EmailDeliveryStrategy,
   RateLimiterService,
   WhatsAppDeliveryStrategy
 } from './domain/services'
@@ -27,8 +26,6 @@ import {
   DrizzleNotificationStatsRepository
 } from './infrastructure/persistence/drizzle/repositories'
 
-import { EmailClientService } from './infrastructure/external-services'
-
 // Controllers
 import { NotificationsController } from './presentation/controllers/notifications.controller'
 
@@ -36,7 +33,6 @@ import { NotificationsController } from './presentation/controllers/notification
 import { DrizzleDatabaseService } from 'src/infrastructure/drizzle/database.provider'
 import { WhatsAppClientService } from 'src/infrastructure/waha/waha-client.service'
 import {
-  EMAIL_CLIENT,
   NOTIFICATION_BATCH_REPOSITORY,
   NOTIFICATION_DATABASE,
   NOTIFICATION_HISTORY_REPOSITORY,
@@ -73,7 +69,6 @@ import {
 
     // Domain Services
     RateLimiterService,
-    EmailDeliveryStrategy,
     WhatsAppDeliveryStrategy,
 
     // Application Use Cases
@@ -86,10 +81,6 @@ import {
     NotificationFailedEventHandler,
 
     // External Services
-    {
-      provide: EMAIL_CLIENT,
-      useClass: EmailClientService
-    },
     {
       provide: WHATSAPP_CLIENT,
       useClass: WhatsAppClientService

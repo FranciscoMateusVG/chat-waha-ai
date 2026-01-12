@@ -23,10 +23,8 @@
     "test:notifications": "jest --testPathPattern=notifications",
     "test:rate-limiter": "jest --testPathPattern=rate-limiter",
     "test:whatsapp": "jest --testPathPattern=whatsapp",
-    "test:email": "jest --testPathPattern=email",
     "test:changed": "jest --onlyChanged",
     "test:ci": "jest --ci --coverage --watchAll=false",
-    "test:email-e2e": "jest --testPathPattern=email-delivery-strategy.e2e-spec.ts",
     "db:generate": "drizzle-kit generate:sqlite",
     "db:push": "drizzle-kit push:sqlite",
     "db:studio": "drizzle-kit studio",
@@ -50,7 +48,6 @@
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.29.3",
     "lmdb": "^3.4.1",
-    "mailtrap": "^4.2.0",
     "nestjs-pino": "^4.4.0",
     "pino": "^9.8.0",
     "pino-loki": "^2.3.2",
@@ -86,6 +83,14 @@
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.1.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "lmdb",
+      "msgpackr-extract",
+      "esbuild"
+    ]
   },
   "jest": {
     "moduleFileExtensions": [

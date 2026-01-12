@@ -1,0 +1,76 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - '3001:3000'
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - API_KEY=${API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - WAHA_BASE_URL=${WAHA_BASE_URL:-http://waha:3000}
+      - WAHA_DEFAULT_SESSION=${WAHA_DEFAULT_SESSION:-default}
+    volumes:
+      - api_data:/app/data
+      - ./api/chat-ai-data.sqlite:/app/chat-ai-data.sqlite
+    restart: unless-stopped
+    depends_on:
+      - waha
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - '8080:80'
+    restart: unless-stopped
+    depends_on:
+      - api
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:80']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  waha:
+    image: devlikeapro/waha:latest
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      - WHATSAPP_HOOK_URL=http://api:3000/webhooks/waha/message
+      - WHATSAPP_HOOK_EVENTS=message
+      - WHATSAPP_DEFAULT_ENGINE=WEBJS
+      - WHATSAPP_START_SESSION=default
+      - WAHA_API_KEY=
+      - WAHA_NO_API_KEY=True
+      - WAHA_DASHBOARD_PASSWORD=
+      - WAHA_DASHBOARD_NO_PASSWORD=True
+      - WHATSAPP_SWAGGER_PASSWORD=
+      - WHATSAPP_SWAGGER_NO_PASSWORD=True
+    ports:
+      - '3002:3000'
+    volumes:
+      - waha_sessions:/app/.sessions
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  api_data:
+    driver: local
+  waha_sessions:
+    driver: local

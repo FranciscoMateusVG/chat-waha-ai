@@ -1,19 +1,22 @@
 # Base stage for dependencies
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat curl
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 # Install dependencies
 FROM base AS deps
-COPY package*.json ./
-RUN npm ci --only=production
+RUN apk add --no-cache python3 make g++
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile --prod
 
 # Build stage
 FROM base AS build
-COPY package*.json ./
-RUN npm ci
+RUN apk add --no-cache python3 make g++
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # Production stage
 FROM base AS runner
@@ -36,5 +39,5 @@ USER nestjs
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/src/main"]
 

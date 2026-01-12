@@ -1,0 +1,531 @@
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.app-header {
+  background: #1a1a2e;
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.api-status {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.api-status.checking {
+  background: #ffc107;
+  color: #000;
+}
+
+.api-status.online {
+  background: #28a745;
+  color: white;
+}
+
+.api-status.offline {
+  background: #dc3545;
+  color: white;
+}
+
+/* Navigation */
+.app-nav {
+  background: #16213e;
+  padding: 0 2rem;
+  display: flex;
+  gap: 0;
+}
+
+.app-nav button {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.app-nav button:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app-nav button.active {
+  color: white;
+  border-bottom-color: #0f4c75;
+}
+
+/* Content */
+.app-content {
+  flex: 1;
+  padding: 2rem;
+  background: #f5f5f5;
+}
+
+/* Footer */
+.app-footer {
+  background: #1a1a2e;
+  color: #888;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.875rem;
+}
+
+/* Common */
+.loading {
+  text-align: center;
+  color: #666;
+  padding: 2rem;
+}
+
+.error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.no-data {
+  text-align: center;
+  color: #666;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.back-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.add-btn, .submit-btn {
+  background: #0f4c75;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+}
+
+.add-btn:hover, .submit-btn:hover {
+  background: #1a5f8a;
+}
+
+.edit-btn {
+  background: #ffc107;
+  color: #000;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+}
+
+.close-chat-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+}
+
+.clear-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Chat History */
+.chat-history h2, .chat-detail h2, .knowledge-manager h2, .system-prompt h2 {
+  margin: 0 0 1.5rem 0;
+  color: #1a1a2e;
+}
+
+.chat-list, .knowledge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.chat-item, .knowledge-item {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.chat-item:hover, .knowledge-item:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.chat-item-header, .knowledge-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.chat-name {
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status.open {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status.closed {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.chat-item-info {
+  display: flex;
+  gap: 1rem;
+  color: #666;
+  font-size: 0.875rem;
+}
+
+/* Chat Detail */
+.chat-detail {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.chat-info {
+  margin-bottom: 1.5rem;
+}
+
+.chat-info p {
+  margin: 0.5rem 0;
+  color: #666;
+}
+
+.messages-list h3 {
+  margin: 0 0 1rem 0;
+  color: #1a1a2e;
+}
+
+.no-messages {
+  text-align: center;
+  color: #666;
+  padding: 2rem;
+}
+
+.message {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.message.assistant {
+  background: #e3f2fd;
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.sender {
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.timestamp {
+  color: #666;
+}
+
+.message-content {
+  color: #333;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* Knowledge */
+.knowledge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.search-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.search-bar button {
+  background: #0f4c75;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+}
+
+.search-info {
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.knowledge-item {
+  cursor: default;
+}
+
+.type {
+  background: #e3f2fd;
+  color: #0f4c75;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.topic {
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.content-preview {
+  color: #666;
+  margin: 0.75rem 0;
+  line-height: 1.5;
+}
+
+.tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.tag {
+  background: #f5f5f5;
+  color: #666;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.knowledge-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid #eee;
+}
+
+.knowledge-item-footer .date {
+  color: #999;
+  font-size: 0.75rem;
+}
+
+.knowledge-item-footer .actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Forms */
+.knowledge-form, .system-prompt {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #1a1a2e;
+}
+
+.form-group input, .form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.form-group input:disabled {
+  background: #f5f5f5;
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+/* System Prompt */
+.system-prompt .description {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.prompt-view {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.prompt-content pre {
+  white-space: pre-wrap;
+  font-family: inherit;
+  margin: 0;
+  color: #333;
+  line-height: 1.6;
+}
+
+.updated-at {
+  color: #666;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.prompt-view .actions, .prompt-editor .actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.prompt-editor textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.pagination button {
+  background: #0f4c75;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+.pagination button:disabled {
+  background: #ccc;
+}
+
+.pagination span {
+  color: #666;
+}

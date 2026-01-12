@@ -6,7 +6,6 @@ import {
   NotificationSentEvent
 } from '../../domain/events'
 import {
-  EmailDeliveryStrategy,
   NotificationDeliveryStrategy,
   WhatsAppDeliveryStrategy
 } from '../../domain/services'
@@ -18,7 +17,6 @@ import {
 
 import { NotificationBatchRepository } from 'src/notifications/domain/repositories/notification-batch.repository.interface'
 import { NotificationRepository } from 'src/notifications/domain/repositories/notification.repository.interface'
-import { EmailContactInfo } from 'src/notifications/domain/value-objects/email-contact-info.vo'
 import { WhatsappContactInfo } from 'src/notifications/domain/value-objects/whatsapp-contact-info.vo'
 import {
   NOTIFICATION_BATCH_REPOSITORY,
@@ -37,7 +35,6 @@ export interface SendNotificationResult {
 }
 
 export const contactInfoMap = {
-  [NotificationChannelType.EMAIL]: EmailContactInfo,
   [NotificationChannelType.WHATSAPP]: WhatsappContactInfo
 }
 
@@ -51,7 +48,6 @@ export class SendNotificationUseCase {
 
   constructor(
     private readonly eventBus: EventBus,
-    private readonly emailDeliveryStrategy: EmailDeliveryStrategy,
     private readonly whatsAppDeliveryStrategy: WhatsAppDeliveryStrategy,
     @Inject(NOTIFICATION_REPOSITORY)
     private readonly notificationRepository: NotificationRepository,
@@ -59,7 +55,6 @@ export class SendNotificationUseCase {
     private readonly notificationBatchRepository: NotificationBatchRepository
   ) {
     this.deliveryStrategies = new Map([
-      [NotificationChannelType.EMAIL, this.emailDeliveryStrategy],
       [NotificationChannelType.WHATSAPP, this.whatsAppDeliveryStrategy]
     ] as [NotificationChannelType, NotificationDeliveryStrategy][])
   }

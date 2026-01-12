@@ -3,8 +3,8 @@ import { NotificationChannel, NotificationChannelType } from '../notification-ch
 describe('NotificationChannel', () => {
   describe('constructor', () => {
     it('should create a valid notification channel with enum value', () => {
-      const channel = new NotificationChannel(NotificationChannelType.EMAIL);
-      expect(channel.value).toBe(NotificationChannelType.EMAIL);
+      const channel = new NotificationChannel(NotificationChannelType.WHATSAPP);
+      expect(channel.value).toBe(NotificationChannelType.WHATSAPP);
     });
 
     it('should create a valid notification channel with string value', () => {
@@ -18,11 +18,6 @@ describe('NotificationChannel', () => {
   });
 
   describe('supportsBatchDelivery', () => {
-    it('should return true for email channel', () => {
-      const channel = NotificationChannel.email();
-      expect(channel.supportsBatchDelivery()).toBe(true);
-    });
-
     it('should return true for whatsapp channel', () => {
       const channel = NotificationChannel.whatsapp();
       expect(channel.supportsBatchDelivery()).toBe(true);
@@ -35,11 +30,6 @@ describe('NotificationChannel', () => {
   });
 
   describe('requiresRateLimiting', () => {
-    it('should return false for email channel', () => {
-      const channel = NotificationChannel.email();
-      expect(channel.requiresRateLimiting()).toBe(false);
-    });
-
     it('should return true for whatsapp channel', () => {
       const channel = NotificationChannel.whatsapp();
       expect(channel.requiresRateLimiting()).toBe(true);
@@ -53,13 +43,13 @@ describe('NotificationChannel', () => {
 
   describe('equals', () => {
     it('should return true for same channel values', () => {
-      const channel1 = NotificationChannel.email();
-      const channel2 = NotificationChannel.email();
+      const channel1 = NotificationChannel.whatsapp();
+      const channel2 = NotificationChannel.whatsapp();
       expect(channel1.equals(channel2)).toBe(true);
     });
 
     it('should return false for different channel values', () => {
-      const channel1 = NotificationChannel.email();
+      const channel1 = NotificationChannel.system();
       const channel2 = NotificationChannel.whatsapp();
       expect(channel1.equals(channel2)).toBe(false);
     });
@@ -75,17 +65,12 @@ describe('NotificationChannel', () => {
       const channel = NotificationChannel.whatsapp();
       expect(channel.value).toBe(NotificationChannelType.WHATSAPP);
     });
-
-    it('should create email channel', () => {
-      const channel = NotificationChannel.email();
-      expect(channel.value).toBe(NotificationChannelType.EMAIL);
-    });
   });
 
   describe('toString', () => {
     it('should return string representation of channel', () => {
-      const channel = NotificationChannel.email();
-      expect(channel.toString()).toBe('email');
+      const channel = NotificationChannel.whatsapp();
+      expect(channel.toString()).toBe('whatsapp');
     });
   });
 });
