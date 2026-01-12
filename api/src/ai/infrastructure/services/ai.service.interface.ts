@@ -6,8 +6,9 @@ export interface AiMessage {
 export interface AiService {
   /**
    * Generate AI response with tool support
+   * @param userId - User ID for multi-tenant data isolation
    * @param context - Array of messages for conversation context
    * @returns Generated response text
    */
-  generateResponse(context: AiMessage[]): Promise<string>
+  generateResponse(userId: string, context: AiMessage[]): Promise<string>
 }

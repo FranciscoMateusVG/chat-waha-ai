@@ -1,9 +1,10 @@
-import { Inject } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { SystemPrompt } from '../../domain/entities/system-prompt.entity'
 import { SystemPromptRepository } from '../../domain/repositories/system-prompt.repository'
 import { SYSTEM_PROMPT_REPOSITORY } from '../../tokens'
 
 export interface SaveSystemPromptDto {
+  userId: string
   content: string
 }
 
@@ -12,6 +13,7 @@ export interface SaveSystemPromptResult {
   error?: string
 }
 
+@Injectable()
 export class SaveSystemPromptUseCase {
   constructor(
     @Inject(SYSTEM_PROMPT_REPOSITORY)
@@ -20,13 +22,17 @@ export class SaveSystemPromptUseCase {
 
   async execute(dto: SaveSystemPromptDto): Promise<SaveSystemPromptResult> {
     try {
-      const existingPrompt = await this.systemPromptRepository.get()
+      if (!dto.userId) {
+        throw new Error('User ID is required')
+      }
+
+      const existingPrompt = await this.systemPromptRepository.get(dto.userId)
 
       if (existingPrompt) {
         existingPrompt.updateContent(dto.content)
         await this.systemPromptRepository.save(existingPrompt)
       } else {
-        const newPrompt = SystemPrompt.create(dto.content)
+        const newPrompt = SystemPrompt.create(dto.userId, dto.content)
         await this.systemPromptRepository.save(newPrompt)
       }
 

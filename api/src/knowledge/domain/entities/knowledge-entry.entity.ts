@@ -2,6 +2,7 @@ import { KnowledgeId } from '../value-objects'
 
 export interface KnowledgeEntryProps {
   id: KnowledgeId
+  userId: string
   type: string
   topic: string
   key: string
@@ -14,6 +15,7 @@ export interface KnowledgeEntryProps {
 
 export class KnowledgeEntry {
   private readonly _id: KnowledgeId
+  private readonly _userId: string
   private readonly _type: string
   private readonly _topic: string
   private readonly _key: string
@@ -26,6 +28,7 @@ export class KnowledgeEntry {
   constructor(props: KnowledgeEntryProps) {
     this.validateProps(props)
     this._id = props.id
+    this._userId = props.userId
     this._type = props.type
     this._topic = props.topic
     this._key = props.key
@@ -38,6 +41,10 @@ export class KnowledgeEntry {
 
   get id(): KnowledgeId {
     return this._id
+  }
+
+  get userId(): string {
+    return this._userId
   }
 
   get type(): string {
@@ -97,21 +104,26 @@ export class KnowledgeEntry {
   }
 
   static create(
+    userId: string,
     type: string,
     topic: string,
     content: string,
     tags?: string[],
     metadata?: Record<string, any>
   ): KnowledgeEntry {
+    if (!userId) {
+      throw new Error('User ID is required')
+    }
     if (!type || !topic || !content) {
       throw new Error('Type, topic, and content are required')
     }
 
     const key = `${type}:${topic}`
     const now = new Date()
-    
+
     return new KnowledgeEntry({
       id: new KnowledgeId(),
+      userId,
       type,
       topic,
       key,
@@ -128,10 +140,17 @@ export class KnowledgeEntry {
   }
 
   private validateProps(props: KnowledgeEntryProps): void {
+    this.validateUserId(props.userId)
     this.validateType(props.type)
     this.validateTopic(props.topic)
     this.validateKey(props.key)
     this.validateContent(props.content)
+  }
+
+  private validateUserId(userId: string): void {
+    if (!userId || userId.trim().length === 0) {
+      throw new Error('Knowledge entry user ID cannot be empty')
+    }
   }
 
   private validateType(type: string): void {

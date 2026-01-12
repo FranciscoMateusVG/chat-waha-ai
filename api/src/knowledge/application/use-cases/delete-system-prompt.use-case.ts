@@ -2,6 +2,10 @@ import { Inject, Injectable } from '@nestjs/common'
 import { SystemPromptRepository } from '../../domain/repositories/system-prompt.repository'
 import { SYSTEM_PROMPT_REPOSITORY } from '../../tokens'
 
+export interface DeleteSystemPromptRequest {
+  userId: string
+}
+
 export interface DeleteSystemPromptResponse {
   success: boolean
   error?: string
@@ -14,10 +18,14 @@ export class DeleteSystemPromptUseCase {
     private readonly systemPromptRepository: SystemPromptRepository
   ) {}
 
-  async execute(): Promise<DeleteSystemPromptResponse> {
+  async execute(request: DeleteSystemPromptRequest): Promise<DeleteSystemPromptResponse> {
     try {
-      // Check if system prompt exists
-      const prompt = await this.systemPromptRepository.get()
+      if (!request.userId) {
+        throw new Error('User ID is required')
+      }
+
+      // Check if system prompt exists for this user
+      const prompt = await this.systemPromptRepository.get(request.userId)
       if (!prompt) {
         return {
           success: false,
@@ -25,7 +33,7 @@ export class DeleteSystemPromptUseCase {
         }
       }
 
-      await this.systemPromptRepository.delete()
+      await this.systemPromptRepository.delete(request.userId)
 
       return {
         success: true

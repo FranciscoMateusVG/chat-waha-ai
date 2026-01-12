@@ -34,7 +34,7 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
         .insert(knowledgeEntries)
         .values(entryData)
         .onConflictDoUpdate({
-          target: knowledgeEntries.key,
+          target: [knowledgeEntries.userId, knowledgeEntries.key],
           set: {
             content: entryData.content,
             tags: entryData.tags,
@@ -53,12 +53,17 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async findById(id: KnowledgeId): Promise<KnowledgeEntry | null> {
+  async findById(userId: string, id: KnowledgeId): Promise<KnowledgeEntry | null> {
     try {
       const result = await this.db
         .select()
         .from(knowledgeEntries)
-        .where(eq(knowledgeEntries.id, id.value))
+        .where(
+          and(
+            eq(knowledgeEntries.userId, userId),
+            eq(knowledgeEntries.id, id.value)
+          )
+        )
         .limit(1)
 
       if (result.length === 0) {
@@ -75,12 +80,17 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async findByKey(key: string): Promise<KnowledgeEntry | null> {
+  async findByKey(userId: string, key: string): Promise<KnowledgeEntry | null> {
     try {
       const result = await this.db
         .select()
         .from(knowledgeEntries)
-        .where(eq(knowledgeEntries.key, key))
+        .where(
+          and(
+            eq(knowledgeEntries.userId, userId),
+            eq(knowledgeEntries.key, key)
+          )
+        )
         .limit(1)
 
       if (result.length === 0) {
@@ -98,12 +108,13 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
   }
 
   async findByTypeAndTopic(
+    userId: string,
     type: string,
     topic: string
   ): Promise<KnowledgeEntry | null> {
     try {
       const key = `${type}:${topic}`
-      return this.findByKey(key)
+      return this.findByKey(userId, key)
     } catch (error) {
       this.logger.error(
         `Failed to find knowledge entry by type ${type} and topic ${topic}: ${error.message}`,
@@ -113,11 +124,12 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async findAll(): Promise<KnowledgeEntry[]> {
+  async findAll(userId: string): Promise<KnowledgeEntry[]> {
     try {
       const records = await this.db
         .select()
         .from(knowledgeEntries)
+        .where(eq(knowledgeEntries.userId, userId))
         .orderBy(desc(knowledgeEntries.updatedAt))
 
       return records.map((record) => this.mapToDomainEntity(record))
@@ -131,21 +143,24 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
   }
 
   async findAllPaginated(
+    userId: string,
     params: PaginationParams
   ): Promise<PaginatedResult<KnowledgeEntry>> {
     try {
       const { page, limit } = params
       const offset = (page - 1) * limit
 
-      // Get total count
+      // Get total count for this user
       const [{ count: totalCount }] = await this.db
         .select({ count: count() })
         .from(knowledgeEntries)
+        .where(eq(knowledgeEntries.userId, userId))
 
-      // Get paginated records
+      // Get paginated records for this user
       const records = await this.db
         .select()
         .from(knowledgeEntries)
+        .where(eq(knowledgeEntries.userId, userId))
         .orderBy(desc(knowledgeEntries.updatedAt))
         .limit(limit)
         .offset(offset)
@@ -169,11 +184,16 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async delete(id: KnowledgeId): Promise<void> {
+  async delete(userId: string, id: KnowledgeId): Promise<void> {
     try {
       await this.db
         .delete(knowledgeEntries)
-        .where(eq(knowledgeEntries.id, id.value))
+        .where(
+          and(
+            eq(knowledgeEntries.userId, userId),
+            eq(knowledgeEntries.id, id.value)
+          )
+        )
       this.logger.debug(
         `Knowledge entry with id ${id.value} deleted successfully`
       )
@@ -186,11 +206,12 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async findAllTypes(): Promise<string[]> {
+  async findAllTypes(userId: string): Promise<string[]> {
     try {
       const result = await this.db
         .selectDistinct({ type: knowledgeEntries.type })
         .from(knowledgeEntries)
+        .where(eq(knowledgeEntries.userId, userId))
         .orderBy(knowledgeEntries.type)
 
       return result.map((r) => r.type)
@@ -203,12 +224,17 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async findTopicsInType(type: string): Promise<string[]> {
+  async findTopicsInType(userId: string, type: string): Promise<string[]> {
     try {
       const result = await this.db
         .select({ topic: knowledgeEntries.topic })
         .from(knowledgeEntries)
-        .where(eq(knowledgeEntries.type, type))
+        .where(
+          and(
+            eq(knowledgeEntries.userId, userId),
+            eq(knowledgeEntries.type, type)
+          )
+        )
         .orderBy(knowledgeEntries.topic)
 
       return result.map((r) => r.topic)
@@ -221,12 +247,17 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async findByTopic(topic: string): Promise<KnowledgeEntry[]> {
+  async findByTopic(userId: string, topic: string): Promise<KnowledgeEntry[]> {
     try {
       const results = await this.db
         .select()
         .from(knowledgeEntries)
-        .where(eq(knowledgeEntries.topic, topic))
+        .where(
+          and(
+            eq(knowledgeEntries.userId, userId),
+            eq(knowledgeEntries.topic, topic)
+          )
+        )
         .orderBy(knowledgeEntries.type)
 
       return results.map((result) => this.mapToDomainEntity(result))
@@ -239,7 +270,7 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async search(query: string): Promise<KnowledgeEntry[]> {
+  async search(userId: string, query: string): Promise<KnowledgeEntry[]> {
     try {
       const searchPattern = `%${query.toLowerCase()}%`
 
@@ -247,10 +278,13 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
         .select()
         .from(knowledgeEntries)
         .where(
-          or(
-            like(knowledgeEntries.content, searchPattern),
-            like(knowledgeEntries.type, searchPattern),
-            like(knowledgeEntries.topic, searchPattern)
+          and(
+            eq(knowledgeEntries.userId, userId),
+            or(
+              like(knowledgeEntries.content, searchPattern),
+              like(knowledgeEntries.type, searchPattern),
+              like(knowledgeEntries.topic, searchPattern)
+            )
           )
         )
         .orderBy(desc(knowledgeEntries.updatedAt))
@@ -265,7 +299,7 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async searchByType(type: string, query: string): Promise<KnowledgeEntry[]> {
+  async searchByType(userId: string, type: string, query: string): Promise<KnowledgeEntry[]> {
     try {
       const searchPattern = `%${query.toLowerCase()}%`
 
@@ -274,6 +308,7 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
         .from(knowledgeEntries)
         .where(
           and(
+            eq(knowledgeEntries.userId, userId),
             eq(knowledgeEntries.type, type),
             or(
               like(knowledgeEntries.content, searchPattern),
@@ -293,14 +328,16 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  async searchByTags(tags: string[]): Promise<KnowledgeEntry[]> {
+  async searchByTags(userId: string, tags: string[]): Promise<KnowledgeEntry[]> {
     try {
       const results = await this.db
         .select()
         .from(knowledgeEntries)
         .where(
-          // This is a simplified approach - for more complex tag searching, you might need JSON functions
-          or(...tags.map((tag) => like(knowledgeEntries.tags, `%"${tag}"%`)))
+          and(
+            eq(knowledgeEntries.userId, userId),
+            or(...tags.map((tag) => like(knowledgeEntries.tags, `%"${tag}"%`)))
+          )
         )
         .orderBy(desc(knowledgeEntries.updatedAt))
 
@@ -319,6 +356,7 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
   ): typeof knowledgeEntries.$inferInsert {
     return {
       id: entry.id.value,
+      userId: entry.userId,
       type: entry.type,
       topic: entry.topic,
       key: entry.key,
@@ -333,6 +371,7 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
   private mapToDomainEntity(dbRecord: KnowledgeEntryRecord): KnowledgeEntry {
     const props: KnowledgeEntryProps = {
       id: new KnowledgeId(dbRecord.id),
+      userId: dbRecord.userId,
       type: dbRecord.type,
       topic: dbRecord.topic,
       key: dbRecord.key,

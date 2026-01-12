@@ -4,6 +4,7 @@ import { KnowledgeRepository } from '../../domain/repositories/knowledge.reposit
 import { KNOWLEDGE_REPOSITORY } from '../../tokens'
 
 export interface RetrieveKnowledgeDto {
+  userId: string
   type: string
   topic: string
 }
@@ -37,11 +38,14 @@ export class RetrieveKnowledgeUseCase {
     try {
       this.logger.log(`Retrieving knowledge entry with type: ${dto.type}, topic: ${dto.topic}`)
 
+      if (!dto.userId) {
+        throw new Error('User ID is required')
+      }
       if (!dto.type || !dto.topic) {
         throw new Error('Type and topic are required')
       }
 
-      const knowledgeEntry = await this.knowledgeRepository.findByTypeAndTopic(dto.type, dto.topic)
+      const knowledgeEntry = await this.knowledgeRepository.findByTypeAndTopic(dto.userId, dto.type, dto.topic)
 
       if (!knowledgeEntry) {
         this.logger.log(`Knowledge entry not found for type: ${dto.type}, topic: ${dto.topic}`)

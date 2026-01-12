@@ -15,23 +15,25 @@ export interface PaginatedResult<T> {
 
 export interface KnowledgeRepository {
   save(entry: KnowledgeEntry): Promise<void>
-  findById(id: KnowledgeId): Promise<KnowledgeEntry | null>
-  findByKey(key: string): Promise<KnowledgeEntry | null>
+  findById(userId: string, id: KnowledgeId): Promise<KnowledgeEntry | null>
+  findByKey(userId: string, key: string): Promise<KnowledgeEntry | null>
   findByTypeAndTopic(
+    userId: string,
     type: string,
     topic: string
   ): Promise<KnowledgeEntry | null>
-  findAll(): Promise<KnowledgeEntry[]>
+  findAll(userId: string): Promise<KnowledgeEntry[]>
   findAllPaginated(
+    userId: string,
     params: PaginationParams
   ): Promise<PaginatedResult<KnowledgeEntry>>
-  delete(id: KnowledgeId): Promise<void>
+  delete(userId: string, id: KnowledgeId): Promise<void>
 
-  findAllTypes(): Promise<string[]>
-  findTopicsInType(type: string): Promise<string[]>
-  findByTopic(topic: string): Promise<KnowledgeEntry[]>
+  findAllTypes(userId: string): Promise<string[]>
+  findTopicsInType(userId: string, type: string): Promise<string[]>
+  findByTopic(userId: string, topic: string): Promise<KnowledgeEntry[]>
 
-  search(query: string): Promise<KnowledgeEntry[]>
-  searchByType(type: string, query: string): Promise<KnowledgeEntry[]>
-  searchByTags(tags: string[]): Promise<KnowledgeEntry[]>
+  search(userId: string, query: string): Promise<KnowledgeEntry[]>
+  searchByType(userId: string, type: string, query: string): Promise<KnowledgeEntry[]>
+  searchByTags(userId: string, tags: string[]): Promise<KnowledgeEntry[]>
 }

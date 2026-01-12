@@ -16,6 +16,7 @@ export class DrizzleSystemPromptRepository implements SystemPromptRepository {
   async save(prompt: SystemPrompt): Promise<void> {
     const record = {
       id: prompt.id,
+      userId: prompt.userId,
       content: prompt.content,
       updatedAt: prompt.updatedAt
     }
@@ -24,7 +25,7 @@ export class DrizzleSystemPromptRepository implements SystemPromptRepository {
       .insert(systemPrompts)
       .values(record)
       .onConflictDoUpdate({
-        target: systemPrompts.id,
+        target: systemPrompts.userId,
         set: {
           content: record.content,
           updatedAt: record.updatedAt
@@ -32,11 +33,11 @@ export class DrizzleSystemPromptRepository implements SystemPromptRepository {
       })
   }
 
-  async get(): Promise<SystemPrompt | null> {
+  async get(userId: string): Promise<SystemPrompt | null> {
     const result = await this.db
       .select()
       .from(systemPrompts)
-      .where(eq(systemPrompts.id, 'system-prompt'))
+      .where(eq(systemPrompts.userId, userId))
       .limit(1)
 
     if (result.length === 0) {
@@ -46,14 +47,15 @@ export class DrizzleSystemPromptRepository implements SystemPromptRepository {
     const record = result[0]
     return SystemPrompt.reconstitute({
       id: record.id,
+      userId: record.userId,
       content: record.content,
       updatedAt: record.updatedAt
     })
   }
 
-  async delete(): Promise<void> {
+  async delete(userId: string): Promise<void> {
     await this.db
       .delete(systemPrompts)
-      .where(eq(systemPrompts.id, 'system-prompt'))
+      .where(eq(systemPrompts.userId, userId))
   }
 }

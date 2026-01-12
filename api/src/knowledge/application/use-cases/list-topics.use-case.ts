@@ -3,6 +3,7 @@ import { KnowledgeRepository } from '../../domain/repositories/knowledge.reposit
 import { KNOWLEDGE_REPOSITORY } from '../../tokens'
 
 export interface ListTopicsDto {
+  userId: string
   type: string
 }
 
@@ -23,13 +24,17 @@ export class ListTopicsUseCase {
 
   async execute(dto: ListTopicsDto): Promise<ListTopicsResult> {
     try {
+      if (!dto.userId) {
+        throw new Error('User ID is required')
+      }
+
       this.logger.log(`Retrieving topics for type: ${dto.type}`)
 
       if (!dto.type) {
         throw new Error('Type is required')
       }
 
-      const topics = await this.knowledgeRepository.findTopicsInType(dto.type)
+      const topics = await this.knowledgeRepository.findTopicsInType(dto.userId, dto.type)
 
       this.logger.log(`Found ${topics.length} topics for type: ${dto.type}`)
 

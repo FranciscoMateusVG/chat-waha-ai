@@ -4,6 +4,7 @@ import { KNOWLEDGE_REPOSITORY } from '../../tokens'
 import { KnowledgeEntry } from '../../domain/entities/knowledge-entry.entity'
 
 export interface BatchRetrieveKnowledgeDto {
+  userId: string
   topics: string[]
 }
 
@@ -25,6 +26,10 @@ export class BatchRetrieveKnowledgeUseCase {
 
   async execute(dto: BatchRetrieveKnowledgeDto): Promise<BatchRetrieveKnowledgeResult> {
     try {
+      if (!dto.userId) {
+        throw new Error('User ID is required')
+      }
+
       this.logger.log(`Retrieving knowledge for ${dto.topics.length} topics`)
 
       if (!dto.topics || dto.topics.length === 0) {
@@ -35,7 +40,7 @@ export class BatchRetrieveKnowledgeUseCase {
       const notFound: string[] = []
 
       for (const topic of dto.topics) {
-        const entries = await this.knowledgeRepository.findByTopic(topic)
+        const entries = await this.knowledgeRepository.findByTopic(dto.userId, topic)
         
         if (entries.length === 0) {
           notFound.push(topic)
