@@ -1,0 +1,93 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+      target: development
+    ports:
+      - '3001:3000'
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      - API_KEY=${API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - WAHA_BASE_URL=${WAHA_BASE_URL:-http://waha:3000}
+      - WAHA_DEFAULT_SESSION=${WAHA_DEFAULT_SESSION:-default}
+    volumes:
+      # Mount source code for hot reload
+      - ./api/src:/app/src
+      - ./api/tsconfig.json:/app/tsconfig.json
+      - ./api/tsconfig.build.json:/app/tsconfig.build.json
+      - ./api/nest-cli.json:/app/nest-cli.json
+      - ./api/drizzle.config.ts:/app/drizzle.config.ts
+      # Persist database
+      - ./api/chat-ai-data.sqlite:/app/chat-ai-data.sqlite
+      # Use named volume for node_modules to avoid overwriting
+      - api_node_modules:/app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - waha
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+      target: development
+    ports:
+      - '5173:5173'
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Mount source code for hot reload
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
+      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json
+      # Use named volume for node_modules to avoid overwriting
+      - frontend_node_modules:/app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  waha:
+    image: devlikeapro/waha:arm
+    restart: unless-stopped
+    environment:
+      - WHATSAPP_HOOK_URL=http://api:3000/webhooks/waha/message
+      - WHATSAPP_HOOK_EVENTS=message
+      - WHATSAPP_DEFAULT_ENGINE=WEBJS
+      - WHATSAPP_START_SESSION=default
+      - WAHA_API_KEY=
+      - WAHA_NO_API_KEY=True
+      - WAHA_DASHBOARD_PASSWORD=
+      - WAHA_DASHBOARD_NO_PASSWORD=True
+      - WHATSAPP_SWAGGER_PASSWORD=
+      - WHATSAPP_SWAGGER_NO_PASSWORD=True
+    ports:
+      - '3002:3000'
+    volumes:
+      - waha_sessions:/app/.sessions
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  api_node_modules:
+    driver: local
+  frontend_node_modules:
+    driver: local
+  waha_sessions:
+    driver: local
