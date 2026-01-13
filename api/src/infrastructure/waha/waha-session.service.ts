@@ -199,6 +199,51 @@ export class WAHASessionService {
   }
 
   /**
+   * Delete a session entirely from WAHA.
+   * This is idempotent - calling it on a non-existent session won't error.
+   * The operation automatically stops the session if running.
+   */
+  async deleteSession(sessionName: string): Promise<void> {
+    const url = `${this.config.baseUrl}/api/sessions/${sessionName}`
+    this.logger.log(`Deleting WAHA session: ${sessionName}`)
+
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+
+      if (this.config.apiKey) {
+        headers['X-Api-Key'] = this.config.apiKey
+      }
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers,
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      // 404 is acceptable - session doesn't exist (idempotent)
+      if (!response.ok && response.status !== 404) {
+        const errorText = await response.text().catch(() => 'Unknown error')
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+
+      this.logger.log(`WAHA session ${sessionName} deleted successfully`)
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${this.config.timeout}ms`)
+      }
+      this.logger.error(`Failed to delete WAHA session ${sessionName}: ${error.message}`)
+      throw new Error(`Failed to delete WAHA session: ${error.message}`)
+    }
+  }
+
+  /**
    * Get QR code for a session (returns base64 or raw value)
    */
   async getQRCode(sessionName: string, format: 'base64' | 'raw' = 'base64'): Promise<WAHAQRCodeResponse | null> {
