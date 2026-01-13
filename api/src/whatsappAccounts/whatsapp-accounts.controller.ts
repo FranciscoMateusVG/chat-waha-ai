@@ -89,7 +89,27 @@ export class WhatsappAccountsController {
   @ApiResponse({ status: 204, description: 'Account deleted' })
   @ApiResponse({ status: 404, description: 'Account not found' })
   async delete(@Param('id') id: string, @Req() req: Request) {
+    this.logger.log(`Deleting WhatsApp account ${id}`)
+
+    // First verify ownership (this throws if not found or not owned)
+    const account = await this.service.findById(id, req.user!.id)
+
+    // Delete WAHA session (best-effort - don't block deletion if WAHA fails)
+    const sessionName = account.id
+    try {
+      await this.wahaSessionService.deleteSession(sessionName)
+      this.logger.log(`WAHA session ${sessionName} deleted for account ${id}`)
+    } catch (error) {
+      // Log the error but proceed with account deletion
+      this.logger.warn(
+        `Falha ao excluir sessão WAHA ${sessionName}: ${error.message}. ` +
+        `A conta será removida do banco de dados mesmo assim.`
+      )
+    }
+
+    // Delete the account from database
     await this.service.delete(id, req.user!.id)
+    this.logger.log(`WhatsApp account ${id} deleted successfully`)
   }
 
   // ============ WAHA Integration Endpoints ============
