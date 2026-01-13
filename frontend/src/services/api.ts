@@ -15,7 +15,10 @@ import type {
   User,
   WhatsappAccount,
   CreateWhatsappAccountDto,
-  UpdateWhatsappAccountDto
+  UpdateWhatsappAccountDto,
+  WhatsAppConnectionStatus,
+  WhatsAppQRCodeData,
+  WhatsAppDiagnosticsData
 } from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -74,6 +77,37 @@ export const whatsappAccountsApi = {
 
   delete: async (id: string): Promise<void> => {
     await api.delete(`/whatsapp-accounts/${id}`);
+  },
+
+  // WAHA Integration endpoints
+  getStatus: async (id: string): Promise<ApiResponse<WhatsAppConnectionStatus>> => {
+    const response = await api.get<ApiResponse<WhatsAppConnectionStatus>>(`/whatsapp-accounts/${id}/status`);
+    return response.data;
+  },
+
+  getQRCode: async (id: string): Promise<ApiResponse<WhatsAppQRCodeData>> => {
+    const response = await api.get<ApiResponse<WhatsAppQRCodeData>>(`/whatsapp-accounts/${id}/qr`);
+    return response.data;
+  },
+
+  connect: async (id: string): Promise<ApiResponse<{ sessionId: string; status: string; message: string }>> => {
+    const response = await api.post<ApiResponse<{ sessionId: string; status: string; message: string }>>(`/whatsapp-accounts/${id}/connect`);
+    return response.data;
+  },
+
+  disconnect: async (id: string): Promise<ApiResponse<{ sessionId: string; status: string; message: string }>> => {
+    const response = await api.post<ApiResponse<{ sessionId: string; status: string; message: string }>>(`/whatsapp-accounts/${id}/disconnect`);
+    return response.data;
+  },
+
+  getDiagnostics: async (id: string): Promise<ApiResponse<WhatsAppDiagnosticsData>> => {
+    const response = await api.get<ApiResponse<WhatsAppDiagnosticsData>>(`/whatsapp-accounts/${id}/diagnostics`);
+    return response.data;
+  },
+
+  createSession: async (id: string): Promise<ApiResponse<{ sessionId: string; status: string; message: string }>> => {
+    const response = await api.post<ApiResponse<{ sessionId: string; status: string; message: string }>>(`/whatsapp-accounts/${id}/diagnostics/create-session`);
+    return response.data;
   }
 };
 

@@ -7,6 +7,7 @@ import {
   Bot,
   Settings,
   MessageCircle,
+  Smartphone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Conversas', href: '/chats', icon: MessageSquare },
   { name: 'Base de Conhecimento', href: '/knowledge', icon: BookOpen },
   { name: 'Teste de IA', href: '/ai-test', icon: Bot },
+  { name: 'Contas WhatsApp', href: '/whatsapp', icon: Smartphone },
 ]
 
 export function Sidebar() {

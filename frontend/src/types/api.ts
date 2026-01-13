@@ -21,7 +21,7 @@ export interface WhatsappAccount {
   userId: string;
   name: string;
   phoneNumber?: string;
-  status: 'pending' | 'active' | 'inactive';
+  status: 'pending' | 'connected' | 'disconnected';
   createdAt: string;
   updatedAt: string;
 }
@@ -34,7 +34,51 @@ export interface CreateWhatsappAccountDto {
 export interface UpdateWhatsappAccountDto {
   name?: string;
   phoneNumber?: string;
-  status?: 'pending' | 'active' | 'inactive';
+  status?: 'pending' | 'connected' | 'disconnected';
+}
+
+// WAHA Connection Types
+export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'needs_qr' | 'failed' | 'unknown';
+export type WAHASessionStatus = 'STOPPED' | 'STARTING' | 'SCAN_QR_CODE' | 'WORKING' | 'FAILED';
+
+export interface WhatsAppConnectionStatus {
+  accountId: string;
+  accountName: string;
+  sessionId: string;
+  status: ConnectionStatus;
+  wahaStatus?: WAHASessionStatus;
+  phoneNumber?: string;
+  pushName?: string;
+  lastChecked: string;
+  error?: string;
+  qrAvailable: boolean;
+}
+
+export interface WhatsAppQRCodeData {
+  qrAvailable: boolean;
+  qrCode?: string;
+  mimetype?: string;
+  message?: string;
+  status?: ConnectionStatus;
+}
+
+export interface WAHADiagnosticsResult {
+  wahaReachable: boolean;
+  wahaVersion?: string;
+  sessionExists: boolean;
+  sessionStatus?: WAHASessionStatus;
+  connectionStatus: ConnectionStatus;
+  qrAvailable: boolean;
+  phoneNumber?: string;
+  pushName?: string;
+  error?: string;
+  checkedAt: string;
+}
+
+export interface WhatsAppDiagnosticsData {
+  accountId: string;
+  accountName: string;
+  diagnostics: WAHADiagnosticsResult;
 }
 
 export interface PaginationMeta {

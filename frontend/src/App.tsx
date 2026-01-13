@@ -6,6 +6,7 @@ import { Notifications } from '@/pages/Notifications'
 import { Chats } from '@/pages/Chats'
 import { Knowledge } from '@/pages/Knowledge'
 import { AITest } from '@/pages/AITest'
+import { WhatsAppAccounts } from '@/pages/WhatsAppAccounts'
 import { AuthPage } from './pages/AuthPage'
 
 function AppRoutes() {
@@ -31,6 +32,7 @@ function AppRoutes() {
         <Route path="chats" element={<Chats />} />
         <Route path="knowledge" element={<Knowledge />} />
         <Route path="ai-test" element={<AITest />} />
+        <Route path="whatsapp" element={<WhatsAppAccounts />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
