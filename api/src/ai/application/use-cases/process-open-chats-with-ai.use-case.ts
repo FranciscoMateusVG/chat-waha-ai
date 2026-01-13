@@ -52,9 +52,9 @@ export class ProcessOpenChatsWithAiUseCase {
     }
 
     try {
-      // Find all open chats
+      // Find all open chats across all users (this is a scheduler running for all users)
       const openChats =
-        await this.chatHistoryRepository.findAllOpenChatHistories()
+        await this.chatHistoryRepository.findAllOpenChatHistoriesAcrossAllUsers()
       this.logger.log(`Found ${openChats.length} open chats`)
 
       // Filter chats that need AI response
@@ -124,6 +124,7 @@ export class ProcessOpenChatsWithAiUseCase {
     // Send notification via WhatsApp with AI marker to prevent webhook loops
     try {
       const dto = {
+        userId: chatHistory.getUserId(),
         recipientId: externalChatId,
         channel: NotificationChannelType.WHATSAPP,
         title: 'Incluir Zenão',

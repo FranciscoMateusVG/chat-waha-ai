@@ -21,8 +21,12 @@ export class DrizzleNotificationBatchRepository
   }
 
   async save(batch: NotificationBatch): Promise<void> {
+    // Get userId from first notification in batch (all notifications in a batch belong to same user)
+    const userId = batch.notifications.length > 0 ? batch.notifications[0].userId : 'system'
+
     const batchData = {
       id: batch.id.value,
+      userId,
       channel: batch.channel.value,
       status: batch.status.value,
       notificationCount: batch.notifications.length,

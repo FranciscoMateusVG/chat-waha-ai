@@ -9,6 +9,7 @@ export interface NotificationHistoryRepository {
     query: NotificationHistoryQuery
   ): Promise<NotificationHistoryResult>
   createFromNotification(
+    userId: string,
     notificationId: string,
     recipientId: string,
     channel: string,

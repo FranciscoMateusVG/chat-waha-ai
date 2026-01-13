@@ -50,6 +50,7 @@ export class NotificationSentEventHandler
     event: NotificationSentEvent
   ): Promise<void> {
     await this.notificationHistoryRepository.createFromNotification(
+      event.userId,
       event.notificationId.value,
       event.recipientId.value,
       event.channel.value,
@@ -65,6 +66,7 @@ export class NotificationSentEventHandler
     event: NotificationSentEvent
   ): Promise<void> {
     await this.notificationStatsRepository.incrementSentCount(
+      event.userId,
       event.channel.value,
       event.sentAt
     )

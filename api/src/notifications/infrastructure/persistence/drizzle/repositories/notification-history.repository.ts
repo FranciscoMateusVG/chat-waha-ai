@@ -91,6 +91,7 @@ export class DrizzleNotificationHistoryRepository
   }
 
   async createFromNotification(
+    userId: string,
     notificationId: string,
     recipientId: string,
     channel: string,
@@ -102,6 +103,7 @@ export class DrizzleNotificationHistoryRepository
     failedReason?: string
   ): Promise<void> {
     const historyData = {
+      userId,
       notificationId,
       recipientId,
       channel,

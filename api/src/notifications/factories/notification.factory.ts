@@ -25,6 +25,7 @@ export function notificationFactory(dto: SendIndividualNotificationDto) {
 
   // Create notification aggregate
   const notification = Notification.create(
+    dto.userId,
     recipientId,
     content,
     channel,

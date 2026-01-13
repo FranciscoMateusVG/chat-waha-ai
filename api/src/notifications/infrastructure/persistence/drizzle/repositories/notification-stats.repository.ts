@@ -123,14 +123,15 @@ export class DrizzleNotificationStatsRepository
     })
   }
 
-  async incrementSentCount(channel: string, date: Date): Promise<void> {
+  async incrementSentCount(userId: string, channel: string, date: Date): Promise<void> {
     const dateStr = date.toISOString().split('T')[0]
-    const id = `${dateStr}-${channel}`
+    const id = `${userId}-${dateStr}-${channel}`
 
     await this.db
       .insert(notificationStats)
       .values({
         id,
+        userId,
         date: dateStr,
         channel,
         totalSent: 1,
@@ -148,17 +149,19 @@ export class DrizzleNotificationStatsRepository
   }
 
   async incrementSentCountBy(
+    userId: string,
     channel: string,
     date: Date,
     count: number
   ): Promise<void> {
     const dateStr = date.toISOString().split('T')[0]
-    const id = `${dateStr}-${channel}`
+    const id = `${userId}-${dateStr}-${channel}`
 
     await this.db
       .insert(notificationStats)
       .values({
         id,
+        userId,
         date: dateStr,
         channel,
         totalSent: count,
@@ -175,14 +178,15 @@ export class DrizzleNotificationStatsRepository
       })
   }
 
-  async incrementFailedCount(channel: string, date: Date): Promise<void> {
+  async incrementFailedCount(userId: string, channel: string, date: Date): Promise<void> {
     const dateStr = date.toISOString().split('T')[0]
-    const id = `${dateStr}-${channel}`
+    const id = `${userId}-${dateStr}-${channel}`
 
     await this.db
       .insert(notificationStats)
       .values({
         id,
+        userId,
         date: dateStr,
         channel,
         totalSent: 0,
@@ -199,14 +203,15 @@ export class DrizzleNotificationStatsRepository
       })
   }
 
-  async incrementDeliveredCount(channel: string, date: Date): Promise<void> {
+  async incrementDeliveredCount(userId: string, channel: string, date: Date): Promise<void> {
     const dateStr = date.toISOString().split('T')[0]
-    const id = `${dateStr}-${channel}`
+    const id = `${userId}-${dateStr}-${channel}`
 
     await this.db
       .insert(notificationStats)
       .values({
         id,
+        userId,
         date: dateStr,
         channel,
         totalSent: 0,

@@ -4,6 +4,7 @@ import { NotificationChannel } from '../value-objects'
 
 export class NotificationSentEvent implements IEvent {
   public readonly notificationId: NotificationId
+  public readonly userId: string
   public readonly recipientId: UserId
   public readonly channel: NotificationChannel
   public readonly title: string
@@ -12,6 +13,7 @@ export class NotificationSentEvent implements IEvent {
 
   constructor(notification: Notification) {
     this.notificationId = notification.id
+    this.userId = notification.userId
     this.recipientId = notification.recipientId
     this.channel = notification.channel
     this.title = notification.content.title
