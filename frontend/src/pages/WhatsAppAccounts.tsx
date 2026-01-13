@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -97,6 +97,61 @@ export function WhatsAppAccounts() {
   useEffect(() => {
     fetchAccounts()
   }, [fetchAccounts])
+
+  // Polling ref for status checks during QR scanning
+  const pollingRef = useRef<{ [accountId: string]: ReturnType<typeof setInterval> }>({})
+
+  // Poll status for accounts waiting for QR scan
+  useEffect(() => {
+    const accountsNeedingQR = accounts.filter(
+      acc => acc.connectionStatus?.status === 'needs_qr' && acc.qrData?.qrAvailable
+    )
+
+    // Start polling for each account waiting for QR scan
+    accountsNeedingQR.forEach(acc => {
+      if (!pollingRef.current[acc.id]) {
+        pollingRef.current[acc.id] = setInterval(async () => {
+          try {
+            const response = await whatsappAccountsApi.getStatus(acc.id)
+            if (response.success && response.data) {
+              // If connected, stop polling and update state
+              if (response.data.status === 'connected') {
+                if (pollingRef.current[acc.id]) {
+                  clearInterval(pollingRef.current[acc.id])
+                  delete pollingRef.current[acc.id]
+                }
+              }
+              setAccounts(prev => prev.map(a =>
+                a.id === acc.id ? {
+                  ...a,
+                  connectionStatus: response.data!,
+                  // Clear QR data if connected
+                  qrData: response.data!.status === 'connected' ? undefined : a.qrData
+                } : a
+              ))
+            }
+          } catch (err) {
+            console.error('Erro ao verificar status:', err)
+          }
+        }, 3000) // Poll every 3 seconds
+      }
+    })
+
+    // Stop polling for accounts no longer needing QR
+    Object.keys(pollingRef.current).forEach(accountId => {
+      const account = accounts.find(a => a.id === accountId)
+      if (!account || account.connectionStatus?.status !== 'needs_qr') {
+        clearInterval(pollingRef.current[accountId])
+        delete pollingRef.current[accountId]
+      }
+    })
+
+    // Cleanup on unmount
+    return () => {
+      Object.values(pollingRef.current).forEach(interval => clearInterval(interval))
+      pollingRef.current = {}
+    }
+  }, [accounts])
 
   const fetchAccountStatus = async (accountId: string) => {
     setAccounts(prev => prev.map(acc =>
@@ -414,24 +469,46 @@ export function WhatsAppAccounts() {
                 {/* QR Code Display */}
                 {account.qrData?.qrAvailable && account.qrData.qrCode && (
                   <div className="border border-border/50 rounded-lg p-4 bg-white flex flex-col items-center">
-                    <p className="text-gray-900 text-sm font-medium mb-2">
-                      Escaneie o QR Code com seu WhatsApp
-                    </p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                      <p className="text-gray-900 text-sm font-medium">
+                        Escaneie o QR Code com seu WhatsApp
+                      </p>
+                    </div>
                     <img
                       src={account.qrData.qrCode.startsWith('data:')
                         ? account.qrData.qrCode
-                        : `data:image/png;base64,${account.qrData.qrCode}`
+                        : `data:${account.qrData.mimetype || 'image/png'};base64,${account.qrData.qrCode}`
                       }
                       alt="QR Code"
                       className="w-64 h-64"
                     />
-                    <p className="text-gray-500 text-xs mt-2">
+                    <p className="text-blue-600 text-xs mt-2 flex items-center gap-1">
+                      <span>Verificando conexão automaticamente...</span>
+                    </p>
+                    <p className="text-gray-500 text-xs mt-1">
                       O QR Code expira em alguns segundos. Clique em "Gerar QR Code" para atualizar.
                     </p>
                   </div>
                 )}
 
-                {account.qrData && !account.qrData.qrAvailable && account.qrData.message && (
+                {/* Connection Success Message */}
+                {account.connectionStatus?.status === 'connected' && (
+                  <div className="border border-green-500/50 rounded-lg p-4 bg-green-500/10 flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-400" />
+                    <div>
+                      <p className="text-green-400 font-medium">WhatsApp conectado com sucesso!</p>
+                      {account.connectionStatus.phoneNumber && (
+                        <p className="text-green-400/80 text-sm">
+                          Telefone: +{account.connectionStatus.phoneNumber}
+                          {account.connectionStatus.pushName && ` (${account.connectionStatus.pushName})`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {account.qrData && !account.qrData.qrAvailable && account.qrData.message && account.connectionStatus?.status !== 'connected' && (
                   <div className="border border-green-500/50 rounded-lg p-4 bg-green-500/10 flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-green-400" />
                     <p className="text-green-400">{account.qrData.message}</p>

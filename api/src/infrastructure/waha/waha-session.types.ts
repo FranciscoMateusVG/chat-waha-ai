@@ -31,10 +31,10 @@ export interface WAHASessionMe {
   pushName?: string
 }
 
-// WAHA QR code response (JSON format)
+// WAHA QR code response (JSON format with Accept: application/json header)
 export interface WAHAQRCodeResponse {
-  value: string // Base64 encoded QR code or raw value
-  mimetype?: string
+  data: string // Base64 encoded QR code image
+  mimetype: string // e.g., "image/png"
 }
 
 // Create session request
