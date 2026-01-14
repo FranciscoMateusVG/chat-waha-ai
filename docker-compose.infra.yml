@@ -1,0 +1,40 @@
+# Infrastructure services for local development (Turbo/pnpm dev)
+# WAHA runs in Docker while API/Frontend run locally on host
+
+services:
+  waha:
+    image: devlikeapro/waha:arm
+    restart: unless-stopped
+    environment:
+      # Webhook configuration for local dev
+      # Uses host.docker.internal to reach API running on host machine at port 3001
+      - WHATSAPP_HOOK_URL=http://host.docker.internal:3001/webhooks/waha/message
+      - WHATSAPP_HOOK_EVENTS=message,message.any,session.status
+      # WhatsApp engine configuration
+      - WHATSAPP_DEFAULT_ENGINE=WEBJS
+      - WHATSAPP_START_SESSION=
+      # Disable authentication for local dev
+      - WAHA_API_KEY=
+      - WAHA_NO_API_KEY=True
+      - WAHA_DASHBOARD_PASSWORD=
+      - WAHA_DASHBOARD_NO_PASSWORD=True
+      - WHATSAPP_SWAGGER_PASSWORD=
+      - WHATSAPP_SWAGGER_NO_PASSWORD=True
+      # Retry configuration for webhooks
+      - WHATSAPP_HOOK_RETRIES_POLICY=linear
+      - WHATSAPP_HOOK_RETRIES_DELAY_SECONDS=2
+      - WHATSAPP_HOOK_RETRIES_ATTEMPTS=3
+    ports:
+      - '3002:3000'
+    volumes:
+      - waha_sessions:/app/.sessions
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '-O', '-', 'http://localhost:3000/api/sessions']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  waha_sessions:
+    driver: local
