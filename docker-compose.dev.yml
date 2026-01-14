@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-chatwaha}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-chatwaha_secret}
+      - POSTGRES_DB=${POSTGRES_DB:-chatwaha}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-chatwaha} -d ${POSTGRES_DB:-chatwaha}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   api:
     build:
       context: ./api
@@ -16,6 +34,7 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - WAHA_BASE_URL=${WAHA_BASE_URL:-http://waha:3000}
       - WAHA_DEFAULT_SESSION=${WAHA_DEFAULT_SESSION:-default}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-chatwaha}:${POSTGRES_PASSWORD:-chatwaha_secret}@postgres:5432/${POSTGRES_DB:-chatwaha}?schema=public
     volumes:
       # Mount package files so entrypoint can sync dependencies
       - ./api/package.json:/app/package.json
@@ -25,14 +44,16 @@ services:
       - ./api/tsconfig.json:/app/tsconfig.json
       - ./api/tsconfig.build.json:/app/tsconfig.build.json
       - ./api/nest-cli.json:/app/nest-cli.json
-      - ./api/drizzle.config.ts:/app/drizzle.config.ts
-      # Persist database
-      - ./api/chat-ai-data.sqlite:/app/chat-ai-data.sqlite
+      - ./api/prisma.config.ts:/app/prisma.config.ts
+      - ./api/prisma:/app/prisma
       # Use named volume for node_modules to avoid overwriting
       - api_node_modules:/app/node_modules
     restart: unless-stopped
     depends_on:
-      - waha
+      postgres:
+        condition: service_healthy
+      waha:
+        condition: service_started
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
@@ -96,6 +117,8 @@ services:
       start_period: 60s
 
 volumes:
+  postgres_data:
+    driver: local
   api_node_modules:
     driver: local
   frontend_node_modules:
