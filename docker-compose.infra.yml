@@ -1,0 +1,35 @@
+# Infrastructure dependencies for local development
+# Use with: docker compose -f docker-compose.infra.yml up -d
+# Run FE + BE locally with: pnpm dev
+
+services:
+  waha:
+    image: devlikeapro/waha:arm
+    restart: unless-stopped
+    environment:
+      - WHATSAPP_HOOK_URL=http://host.docker.internal:3001/webhooks/waha/message
+      - WHATSAPP_HOOK_EVENTS=message
+      - WHATSAPP_DEFAULT_ENGINE=WEBJS
+      - WHATSAPP_START_SESSION=default
+      - WAHA_API_KEY=
+      - WAHA_NO_API_KEY=True
+      - WAHA_DASHBOARD_PASSWORD=
+      - WAHA_DASHBOARD_NO_PASSWORD=True
+      - WHATSAPP_SWAGGER_PASSWORD=
+      - WHATSAPP_SWAGGER_NO_PASSWORD=True
+    ports:
+      - '3002:3000'
+    volumes:
+      - waha_sessions:/app/.sessions
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  waha_sessions:
+    driver: local
