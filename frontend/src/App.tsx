@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'sonner'
 import { useAuth, AuthProvider } from './contexts/AuthContext'
 import { Layout } from '@/components/layout/Layout'
 import { Dashboard } from '@/pages/Dashboard'
@@ -44,6 +45,16 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <AppRoutes />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: 'hsl(var(--card))',
+              color: 'hsl(var(--card-foreground))',
+              border: '1px solid hsl(var(--border))',
+            },
+          }}
+        />
       </BrowserRouter>
     </AuthProvider>
   )

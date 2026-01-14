@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +37,7 @@ interface AccountWithStatus extends WhatsappAccount {
   isLoadingQR?: boolean
   isLoadingDiagnostics?: boolean
   showDiagnostics?: boolean
+  isDeleting?: boolean
 }
 
 function getStatusBadge(status: ConnectionStatus | string | undefined) {
@@ -222,11 +224,23 @@ export function WhatsAppAccounts() {
   const deleteAccount = async (accountId: string) => {
     if (!confirm('Tem certeza que deseja excluir esta conta WhatsApp?')) return
 
+    // Set deleting state
+    setAccounts(prev => prev.map(acc =>
+      acc.id === accountId ? { ...acc, isDeleting: true } : acc
+    ))
+
     try {
       await whatsappAccountsApi.delete(accountId)
-      await fetchAccounts()
+      // Remove from state with animation delay
+      setAccounts(prev => prev.filter(acc => acc.id !== accountId))
+      toast.success('Conta WhatsApp excluída com sucesso')
     } catch (err) {
       console.error('Erro ao excluir conta:', err)
+      // Re-enable the card on error
+      setAccounts(prev => prev.map(acc =>
+        acc.id === accountId ? { ...acc, isDeleting: false } : acc
+      ))
+      toast.error('Erro ao excluir conta. Tente novamente.')
     }
   }
 
@@ -300,18 +314,32 @@ export function WhatsAppAccounts() {
       ) : (
         <div className="grid gap-4">
           {accounts.map((account) => (
-            <Card key={account.id} className="border-border/50 bg-card/50 backdrop-blur">
+            <Card
+              key={account.id}
+              className={`border-border/50 bg-card/50 backdrop-blur transition-opacity duration-200 ${
+                account.isDeleting ? 'opacity-50 pointer-events-none' : ''
+              }`}
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                      {account.connectionStatus
-                        ? getStatusIcon(account.connectionStatus.status)
-                        : <Smartphone className="h-5 w-5 text-primary" />
-                      }
+                      {account.isDeleting ? (
+                        <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                      ) : account.connectionStatus ? (
+                        getStatusIcon(account.connectionStatus.status)
+                      ) : (
+                        <Smartphone className="h-5 w-5 text-primary" />
+                      )}
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{account.name}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {account.isDeleting ? (
+                          <span className="text-muted-foreground">Excluindo...</span>
+                        ) : (
+                          account.name
+                        )}
+                      </CardTitle>
                       <CardDescription className="flex items-center gap-2">
                         {account.connectionStatus?.phoneNumber && (
                           <span>+{account.connectionStatus.phoneNumber}</span>
@@ -328,9 +356,14 @@ export function WhatsAppAccounts() {
                       variant="ghost"
                       size="icon"
                       onClick={() => deleteAccount(account.id)}
+                      disabled={account.isDeleting}
                       className="text-red-400 hover:text-red-300 hover:bg-red-400/10"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {account.isDeleting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -343,7 +376,7 @@ export function WhatsAppAccounts() {
                     variant="outline"
                     size="sm"
                     onClick={() => fetchAccountStatus(account.id)}
-                    disabled={account.isLoadingStatus}
+                    disabled={account.isLoadingStatus || account.isDeleting}
                   >
                     {account.isLoadingStatus
                       ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -357,6 +390,7 @@ export function WhatsAppAccounts() {
                       variant="default"
                       size="sm"
                       onClick={() => connectAccount(account.id)}
+                      disabled={account.isDeleting}
                     >
                       <Wifi className="h-4 w-4 mr-2" />
                       Conectar
@@ -366,6 +400,7 @@ export function WhatsAppAccounts() {
                       variant="outline"
                       size="sm"
                       onClick={() => disconnectAccount(account.id)}
+                      disabled={account.isDeleting}
                       className="text-red-400 hover:text-red-300"
                     >
                       <WifiOff className="h-4 w-4 mr-2" />
@@ -379,7 +414,7 @@ export function WhatsAppAccounts() {
                       variant="outline"
                       size="sm"
                       onClick={() => fetchQRCode(account.id)}
-                      disabled={account.isLoadingQR}
+                      disabled={account.isLoadingQR || account.isDeleting}
                     >
                       {account.isLoadingQR
                         ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -392,6 +427,7 @@ export function WhatsAppAccounts() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={account.isDeleting}
                     onClick={() => {
                       if (account.showDiagnostics) {
                         setAccounts(prev => prev.map(acc =>
