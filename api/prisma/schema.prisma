@@ -1,0 +1,259 @@
+// Prisma v7 schema for Chat WAHA AI
+// PostgreSQL database with multi-tenant isolation
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// Authentication & User Management
+// ============================================
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  sessions          Session[]
+  whatsappAccounts  WhatsappAccount[]
+  chatHistories     ChatHistory[]
+  knowledgeEntries  KnowledgeEntry[]
+  systemPrompt      SystemPrompt?
+  notifications     Notification[]
+  notificationBatches NotificationBatch[]
+  notificationHistory NotificationHistory[]
+  notificationStats   NotificationStats[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model WhatsappAccount {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  name        String
+  phoneNumber String?  @map("phone_number")
+  status      String   @default("pending") // 'pending' | 'connected' | 'disconnected'
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("whatsapp_accounts")
+}
+
+// ============================================
+// Chat Management (DDD Aggregate)
+// ============================================
+
+model ChatHistory {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  externalChatId    String    @map("external_chat_id")
+  chatName          String    @map("chat_name")
+  status            String    // 'open' | 'closed'
+  lastMessageSender String    @map("last_message_sender") // 'user' | 'owner' | 'ai' | 'system'
+  openedAt          DateTime  @map("opened_at")
+  lastMessageAt     DateTime  @map("last_message_at")
+  closedAt          DateTime? @map("closed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId])
+  @@index([externalChatId])
+  @@index([status])
+  @@index([lastMessageAt])
+  @@index([userId, status, externalChatId])
+  @@map("chat_histories")
+}
+
+model ChatMessage {
+  id            String   @id @default(uuid())
+  chatHistoryId String   @map("chat_history_id")
+  content       String
+  sender        String   // 'user' | 'owner' | 'ai' | 'system'
+  mentionedAi   Boolean  @default(false) @map("mentioned_ai")
+  timestamp     DateTime
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  chatHistory ChatHistory @relation(fields: [chatHistoryId], references: [id], onDelete: Cascade)
+
+  @@index([chatHistoryId])
+  @@index([timestamp])
+  @@index([sender])
+  @@index([chatHistoryId, timestamp])
+  @@map("chat_messages")
+}
+
+// ============================================
+// Knowledge Base
+// ============================================
+
+model KnowledgeEntry {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String
+  topic     String
+  key       String
+  content   String
+  tags      Json?    // String array stored as JSON
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@index([type])
+  @@index([topic])
+  @@index([key])
+  @@index([createdAt])
+  @@map("knowledge_entries")
+}
+
+model SystemPrompt {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  content   String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("system_prompts")
+}
+
+// ============================================
+// Notifications (CQRS Pattern)
+// ============================================
+
+// Write model - domain aggregates
+model Notification {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  recipientId  String    @map("recipient_id")
+  title        String
+  body         String
+  channel      String
+  status       String
+  metadata     Json?
+  batchId      String?   @map("batch_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  sentAt       DateTime? @map("sent_at")
+  contactInfo  String?   @map("contact_info")
+  errorMessage String?   @map("error_message")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([recipientId])
+  @@index([status])
+  @@index([channel])
+  @@index([createdAt])
+  @@index([batchId])
+  @@map("notifications")
+}
+
+model NotificationBatch {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  channel           String
+  status            String
+  notificationCount Int       @map("notification_count")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  processedAt       DateTime? @map("processed_at")
+  errorMessage      String?   @map("error_message")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([channel])
+  @@map("notification_batches")
+}
+
+// Read model - CQRS
+model NotificationHistory {
+  notificationId String    @id @map("notification_id")
+  userId         String    @map("user_id")
+  recipientId    String    @map("recipient_id")
+  channel        String
+  status         String
+  title          String
+  body           String
+  metadata       Json?
+  createdAt      DateTime  @map("created_at")
+  sentAt         DateTime? @map("sent_at")
+  failedReason   String?   @map("failed_reason")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([recipientId])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
+  @@map("notification_history")
+}
+
+// Read model - aggregated stats
+model NotificationStats {
+  id             String   @id @default(uuid()) // user-date-channel combination
+  userId         String   @map("user_id")
+  date           String   // YYYY-MM-DD format
+  channel        String
+  totalSent      Int      @default(0) @map("total_sent")
+  totalFailed    Int      @default(0) @map("total_failed")
+  totalDelivered Int      @default(0) @map("total_delivered")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, channel])
+  @@index([userId])
+  @@index([date])
+  @@index([channel])
+  @@map("notification_stats")
+}

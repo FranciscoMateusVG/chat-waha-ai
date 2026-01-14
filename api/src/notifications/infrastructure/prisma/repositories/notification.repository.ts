@@ -1,58 +1,42 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { desc, eq, sql } from 'drizzle-orm'
-import { DrizzleDatabaseService } from 'src/infrastructure/drizzle/database.provider'
+import { PrismaService } from '../../../../infrastructure/prisma/prisma.service'
+import { Notification as PrismaNotification } from '@prisma/generated'
 import { contactInfoMap } from 'src/notifications/application/use-cases/send-notification.use-case'
-import {
-  Notification as NotificationDbRecord,
-  notifications
-} from '../../../../../infrastructure/drizzle/schemas/notification/schema'
-import { Notification, NotificationProps } from '../../../../domain/entities'
+import { Notification, NotificationProps } from '../../../domain/entities'
 import {
   BatchId,
   NotificationId,
   UserId
-} from '../../../../domain/entities/ids'
-import { NotificationRepository } from '../../../../domain/repositories/notification.repository.interface'
+} from '../../../domain/entities/ids'
+import { NotificationRepository } from '../../../domain/repositories/notification.repository.interface'
 import {
   NotificationChannel,
   NotificationContent,
   NotificationStatus
-} from '../../../../domain/value-objects'
+} from '../../../domain/value-objects'
 
 @Injectable()
-export class DrizzleNotificationRepository implements NotificationRepository {
-  private readonly logger = new Logger(DrizzleNotificationRepository.name)
+export class PrismaNotificationRepository implements NotificationRepository {
+  private readonly logger = new Logger(PrismaNotificationRepository.name)
 
-  constructor(private readonly databaseService: DrizzleDatabaseService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  private get db() {
-    return this.databaseService.getDatabase()
-  }
-
-  /**
-   * Save a notification (upsert - insert or update)
-   * This is called multiple times in the use case:
-   * 1. First save when notification is created (status: pending)
-   * 2. Second save after delivery (status: sent/failed)
-   */
   async save(notification: Notification): Promise<void> {
     try {
       const notificationData = this.mapToDbRecord(notification)
 
-      await this.db
-        .insert(notifications)
-        .values(notificationData)
-        .onConflictDoUpdate({
-          target: notifications.id,
-          set: {
-            status: notificationData.status,
-            sentAt: notificationData.sentAt,
-            batchId: notificationData.batchId,
-            errorMessage: notificationData.errorMessage,
-            updatedAt: notificationData.updatedAt,
-            contactInfo: notificationData.contactInfo
-          }
-        })
+      await this.prisma.notification.upsert({
+        where: { id: notificationData.id },
+        create: notificationData,
+        update: {
+          status: notificationData.status,
+          sentAt: notificationData.sentAt,
+          batchId: notificationData.batchId,
+          errorMessage: notificationData.errorMessage,
+          updatedAt: new Date(),
+          contactInfo: notificationData.contactInfo
+        }
+      })
 
       this.logger.debug(
         `Notification ${notification.id.value} saved successfully`
@@ -66,9 +50,6 @@ export class DrizzleNotificationRepository implements NotificationRepository {
     }
   }
 
-  /**
-   * Save multiple notifications (bulk upsert)
-   */
   async saveMany(notificationList: Notification[]): Promise<void> {
     if (notificationList.length === 0) {
       return
@@ -79,20 +60,23 @@ export class DrizzleNotificationRepository implements NotificationRepository {
         this.mapToDbRecord(notification)
       )
 
-      await this.db
-        .insert(notifications)
-        .values(notificationData)
-        .onConflictDoUpdate({
-          target: notifications.id,
-          set: {
-            status: sql`excluded.status`,
-            sentAt: sql`excluded.sent_at`,
-            batchId: sql`excluded.batch_id`,
-            contactInfo: sql`excluded.contact_info`,
-            errorMessage: sql`excluded.error_message`,
-            updatedAt: sql`excluded.updated_at`
-          }
-        })
+      // Use transaction for bulk upsert
+      await this.prisma.$transaction(
+        notificationData.map((data) =>
+          this.prisma.notification.upsert({
+            where: { id: data.id },
+            create: data,
+            update: {
+              status: data.status,
+              sentAt: data.sentAt,
+              batchId: data.batchId,
+              contactInfo: data.contactInfo,
+              errorMessage: data.errorMessage,
+              updatedAt: new Date()
+            }
+          })
+        )
+      )
 
       this.logger.debug(
         `${notificationList.length} notifications saved successfully`
@@ -108,17 +92,15 @@ export class DrizzleNotificationRepository implements NotificationRepository {
 
   async findById(id: string): Promise<Notification | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.id, id))
-        .limit(1)
+      const result = await this.prisma.notification.findUnique({
+        where: { id }
+      })
 
-      if (result.length === 0) {
+      if (!result) {
         return null
       }
 
-      return this.mapToDomainEntity(result[0])
+      return this.mapToDomainEntity(result)
     } catch (error) {
       this.logger.error(
         `Failed to find notification by id ${id}: ${error.message}`,
@@ -130,11 +112,10 @@ export class DrizzleNotificationRepository implements NotificationRepository {
 
   async findByRecipientId(recipientId: string): Promise<Notification[]> {
     try {
-      const results = await this.db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.recipientId, recipientId))
-        .orderBy(desc(notifications.createdAt))
+      const results = await this.prisma.notification.findMany({
+        where: { recipientId },
+        orderBy: { createdAt: 'desc' }
+      })
 
       return results.map((result) => this.mapToDomainEntity(result))
     } catch (error) {
@@ -148,11 +129,10 @@ export class DrizzleNotificationRepository implements NotificationRepository {
 
   async findByStatus(status: string): Promise<Notification[]> {
     try {
-      const results = await this.db
-        .select()
-        .from(notifications)
-        .where(eq(notifications.status, status))
-        .orderBy(desc(notifications.createdAt))
+      const results = await this.prisma.notification.findMany({
+        where: { status },
+        orderBy: { createdAt: 'desc' }
+      })
 
       return results.map((result) => this.mapToDomainEntity(result))
     } catch (error) {
@@ -164,17 +144,15 @@ export class DrizzleNotificationRepository implements NotificationRepository {
     }
   }
 
-  /**
-   * Update is now redundant since save() does upsert
-   * Keeping it for interface compatibility
-   */
   async update(notification: Notification): Promise<void> {
     await this.save(notification)
   }
 
   async delete(id: string): Promise<void> {
     try {
-      await this.db.delete(notifications).where(eq(notifications.id, id))
+      await this.prisma.notification.delete({
+        where: { id }
+      })
       this.logger.debug(`Notification ${id} deleted successfully`)
     } catch (error) {
       this.logger.error(
@@ -185,14 +163,8 @@ export class DrizzleNotificationRepository implements NotificationRepository {
     }
   }
 
-  /**
-   * Map domain entity to database record
-   */
-  private mapToDbRecord(
-    notification: Notification
-  ): typeof notifications.$inferInsert {
-    // Create a type that ensures all fields are explicitly mapped
-    const record = {
+  private mapToDbRecord(notification: Notification) {
+    return {
       id: notification.id.value,
       userId: notification.userId,
       recipientId: notification.recipientId.value,
@@ -200,27 +172,18 @@ export class DrizzleNotificationRepository implements NotificationRepository {
       body: notification.content.body,
       channel: notification.channel.value,
       status: notification.status.value,
-      metadata: notification.content.metadata
-        ? JSON.stringify(notification.content.metadata)
-        : null,
+      metadata: notification.content.metadata || null,
       batchId: notification.batchId?.value || null,
       createdAt: notification.createdAt,
       sentAt: notification.sentAt || null,
       contactInfo: notification.contactInfo.value,
-      errorMessage: null, // TODO: Add errorMessage to domain entity
+      errorMessage: null,
       updatedAt: new Date()
-    } satisfies typeof notifications.$inferInsert
-
-    return record
+    }
   }
 
-  /**
-   * Map database record to domain entity
-   */
-  private mapToDomainEntity(dbRecord: NotificationDbRecord): Notification {
-    const metadata = dbRecord.metadata
-      ? this.safeJsonParse(dbRecord.metadata as string)
-      : undefined
+  private mapToDomainEntity(dbRecord: PrismaNotification): Notification {
+    const metadata = dbRecord.metadata as Record<string, unknown> | null
 
     const ContactInfoClass = contactInfoMap[dbRecord.channel]
     const contactInfo = new ContactInfoClass(dbRecord.contactInfo)
@@ -229,7 +192,7 @@ export class DrizzleNotificationRepository implements NotificationRepository {
       id: new NotificationId(dbRecord.id),
       userId: dbRecord.userId,
       recipientId: new UserId(dbRecord.recipientId),
-      content: new NotificationContent(dbRecord.title, dbRecord.body, metadata),
+      content: new NotificationContent(dbRecord.title, dbRecord.body, metadata || undefined),
       channel: new NotificationChannel(dbRecord.channel),
       status: new NotificationStatus(dbRecord.status),
       contactInfo: contactInfo,
@@ -239,17 +202,5 @@ export class DrizzleNotificationRepository implements NotificationRepository {
     }
 
     return new Notification(props)
-  }
-
-  /**
-   * Safely parse JSON with error handling
-   */
-  private safeJsonParse(json: string): Record<string, any> | undefined {
-    try {
-      return JSON.parse(json)
-    } catch (error) {
-      this.logger.warn(`Failed to parse metadata JSON: ${json}`)
-      return undefined
-    }
   }
 }

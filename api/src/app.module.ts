@@ -8,6 +8,7 @@ import { ChatHistoryModule } from './chatHistory/chatHistory.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { WhatsappAccountsModule } from './whatsappAccounts/whatsapp-accounts.module'
 import { HealthController } from './health/health.controller'
+import { PrismaModule } from './infrastructure/prisma/prisma.module'
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { HealthController } from './health/health.controller'
       isGlobal: true
     }),
     ScheduleModule.forRoot(),
+    PrismaModule,
     AuthModule,
     WhatsappAccountsModule,
     LoggerModule.forRootAsync({

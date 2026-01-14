@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-chatwaha}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-chatwaha_secret}
+      - POSTGRES_DB=${POSTGRES_DB:-chatwaha}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-chatwaha} -d ${POSTGRES_DB:-chatwaha}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   api:
     build:
       context: ./api
@@ -12,15 +28,15 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:8080}
       - API_KEY=${API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
       - WAHA_BASE_URL=${WAHA_BASE_URL:-http://waha:3000}
       - WAHA_DEFAULT_SESSION=${WAHA_DEFAULT_SESSION:-default}
-    volumes:
-      - api_data:/app/data
-      - ./api/chat-ai-data.sqlite:/app/chat-ai-data.sqlite
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-chatwaha}:${POSTGRES_PASSWORD:-chatwaha_secret}@postgres:5432/${POSTGRES_DB:-chatwaha}?schema=public
     restart: unless-stopped
     depends_on:
-      - waha
+      postgres:
+        condition: service_healthy
+      waha:
+        condition: service_started
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
@@ -89,7 +105,7 @@ services:
       start_period: 60s
 
 volumes:
-  api_data:
+  postgres_data:
     driver: local
   waha_sessions:
     driver: local

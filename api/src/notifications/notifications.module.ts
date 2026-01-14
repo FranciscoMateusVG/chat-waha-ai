@@ -20,21 +20,25 @@ import {
 
 // Infrastructure Layer
 import {
-  DrizzleNotificationBatchRepository,
-  DrizzleNotificationHistoryRepository,
-  DrizzleNotificationRepository,
-  DrizzleNotificationStatsRepository
-} from './infrastructure/persistence/drizzle/repositories'
+  PrismaNotificationBatchRepository
+} from './infrastructure/prisma/repositories/notification-batch.repository'
+import {
+  PrismaNotificationHistoryRepository
+} from './infrastructure/prisma/repositories/notification-history.repository'
+import {
+  PrismaNotificationRepository
+} from './infrastructure/prisma/repositories/notification.repository'
+import {
+  PrismaNotificationStatsRepository
+} from './infrastructure/prisma/repositories/notification-stats.repository'
 
 // Controllers
 import { NotificationsController } from './presentation/controllers/notifications.controller'
 
 // Tokens
-import { DrizzleDatabaseService } from 'src/infrastructure/drizzle/database.provider'
 import { WhatsAppClientService } from 'src/infrastructure/waha/waha-client.service'
 import {
   NOTIFICATION_BATCH_REPOSITORY,
-  NOTIFICATION_DATABASE,
   NOTIFICATION_HISTORY_REPOSITORY,
   NOTIFICATION_REPOSITORY,
   NOTIFICATION_STATS_REPOSITORY,
@@ -47,16 +51,6 @@ import {
   imports: [CqrsModule],
   controllers: [NotificationsController],
   providers: [
-    // Database
-    DrizzleDatabaseService,
-    {
-      provide: NOTIFICATION_DATABASE,
-      useFactory: (dbService: DrizzleDatabaseService) => {
-        return dbService.getDatabase()
-      },
-      inject: [DrizzleDatabaseService]
-    },
-
     // Rate Limiter Configuration
     {
       provide: RATE_LIMITER_MAX_REQUESTS,
@@ -77,7 +71,6 @@ import {
 
     // Event Handlers
     NotificationSentEventHandler,
-
     NotificationFailedEventHandler,
 
     // External Services
@@ -89,19 +82,19 @@ import {
     // Repositories
     {
       provide: NOTIFICATION_REPOSITORY,
-      useClass: DrizzleNotificationRepository
+      useClass: PrismaNotificationRepository
     },
     {
       provide: NOTIFICATION_HISTORY_REPOSITORY,
-      useClass: DrizzleNotificationHistoryRepository
+      useClass: PrismaNotificationHistoryRepository
     },
     {
       provide: NOTIFICATION_STATS_REPOSITORY,
-      useClass: DrizzleNotificationStatsRepository
+      useClass: PrismaNotificationStatsRepository
     },
     {
       provide: NOTIFICATION_BATCH_REPOSITORY,
-      useClass: DrizzleNotificationBatchRepository
+      useClass: PrismaNotificationBatchRepository
     }
   ],
   exports: [

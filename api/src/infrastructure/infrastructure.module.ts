@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common'
-import { DrizzleDatabaseService } from './drizzle/database.provider'
 
+// This module is kept for backwards compatibility but is now empty
+// since PrismaModule is globally imported in AppModule
 @Module({
-  providers: [DrizzleDatabaseService],
-  exports: [DrizzleDatabaseService]
+  providers: [],
+  exports: []
 })
 export class InfrastructureModule {}

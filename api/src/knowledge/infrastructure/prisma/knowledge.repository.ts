@@ -1,10 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { and, count, desc, eq, like, or } from 'drizzle-orm'
-import { DrizzleDatabaseService } from '../../../infrastructure/drizzle/database.provider'
-import {
-  KnowledgeEntryRecord,
-  knowledgeEntries
-} from '../../../infrastructure/drizzle/schemas/knowledge/schema'
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service'
+import { KnowledgeEntry as PrismaKnowledgeEntry } from '@prisma/generated'
 import {
   KnowledgeEntry,
   KnowledgeEntryProps
@@ -17,31 +13,30 @@ import {
 import { KnowledgeId } from '../../domain/value-objects'
 
 @Injectable()
-export class DrizzleKnowledgeRepository implements KnowledgeRepository {
-  private readonly logger = new Logger(DrizzleKnowledgeRepository.name)
+export class PrismaKnowledgeRepository implements KnowledgeRepository {
+  private readonly logger = new Logger(PrismaKnowledgeRepository.name)
 
-  constructor(private readonly databaseService: DrizzleDatabaseService) {}
-
-  private get db() {
-    return this.databaseService.getDatabase()
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   async save(entry: KnowledgeEntry): Promise<void> {
     try {
       const entryData = this.mapToDbRecord(entry)
 
-      await this.db
-        .insert(knowledgeEntries)
-        .values(entryData)
-        .onConflictDoUpdate({
-          target: [knowledgeEntries.userId, knowledgeEntries.key],
-          set: {
-            content: entryData.content,
-            tags: entryData.tags,
-            metadata: entryData.metadata,
-            updatedAt: entryData.updatedAt
+      await this.prisma.knowledgeEntry.upsert({
+        where: {
+          userId_key: {
+            userId: entryData.userId,
+            key: entryData.key
           }
-        })
+        },
+        create: entryData,
+        update: {
+          content: entryData.content,
+          tags: entryData.tags,
+          metadata: entryData.metadata,
+          updatedAt: new Date()
+        }
+      })
 
       this.logger.debug(`Knowledge entry ${entry.id.value} saved successfully`)
     } catch (error) {
@@ -55,22 +50,18 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
 
   async findById(userId: string, id: KnowledgeId): Promise<KnowledgeEntry | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(knowledgeEntries)
-        .where(
-          and(
-            eq(knowledgeEntries.userId, userId),
-            eq(knowledgeEntries.id, id.value)
-          )
-        )
-        .limit(1)
+      const result = await this.prisma.knowledgeEntry.findFirst({
+        where: {
+          userId,
+          id: id.value
+        }
+      })
 
-      if (result.length === 0) {
+      if (!result) {
         return null
       }
 
-      return this.mapToDomainEntity(result[0])
+      return this.mapToDomainEntity(result)
     } catch (error) {
       this.logger.error(
         `Failed to find knowledge entry by id ${id.value}: ${error.message}`,
@@ -82,22 +73,20 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
 
   async findByKey(userId: string, key: string): Promise<KnowledgeEntry | null> {
     try {
-      const result = await this.db
-        .select()
-        .from(knowledgeEntries)
-        .where(
-          and(
-            eq(knowledgeEntries.userId, userId),
-            eq(knowledgeEntries.key, key)
-          )
-        )
-        .limit(1)
+      const result = await this.prisma.knowledgeEntry.findUnique({
+        where: {
+          userId_key: {
+            userId,
+            key
+          }
+        }
+      })
 
-      if (result.length === 0) {
+      if (!result) {
         return null
       }
 
-      return this.mapToDomainEntity(result[0])
+      return this.mapToDomainEntity(result)
     } catch (error) {
       this.logger.error(
         `Failed to find knowledge entry by key ${key}: ${error.message}`,
@@ -126,11 +115,10 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
 
   async findAll(userId: string): Promise<KnowledgeEntry[]> {
     try {
-      const records = await this.db
-        .select()
-        .from(knowledgeEntries)
-        .where(eq(knowledgeEntries.userId, userId))
-        .orderBy(desc(knowledgeEntries.updatedAt))
+      const records = await this.prisma.knowledgeEntry.findMany({
+        where: { userId },
+        orderBy: { updatedAt: 'desc' }
+      })
 
       return records.map((record) => this.mapToDomainEntity(record))
     } catch (error) {
@@ -148,22 +136,17 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
   ): Promise<PaginatedResult<KnowledgeEntry>> {
     try {
       const { page, limit } = params
-      const offset = (page - 1) * limit
+      const skip = (page - 1) * limit
 
-      // Get total count for this user
-      const [{ count: totalCount }] = await this.db
-        .select({ count: count() })
-        .from(knowledgeEntries)
-        .where(eq(knowledgeEntries.userId, userId))
-
-      // Get paginated records for this user
-      const records = await this.db
-        .select()
-        .from(knowledgeEntries)
-        .where(eq(knowledgeEntries.userId, userId))
-        .orderBy(desc(knowledgeEntries.updatedAt))
-        .limit(limit)
-        .offset(offset)
+      const [totalCount, records] = await Promise.all([
+        this.prisma.knowledgeEntry.count({ where: { userId } }),
+        this.prisma.knowledgeEntry.findMany({
+          where: { userId },
+          orderBy: { updatedAt: 'desc' },
+          skip,
+          take: limit
+        })
+      ])
 
       const items = records.map((record) => this.mapToDomainEntity(record))
 
@@ -186,14 +169,12 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
 
   async delete(userId: string, id: KnowledgeId): Promise<void> {
     try {
-      await this.db
-        .delete(knowledgeEntries)
-        .where(
-          and(
-            eq(knowledgeEntries.userId, userId),
-            eq(knowledgeEntries.id, id.value)
-          )
-        )
+      await this.prisma.knowledgeEntry.deleteMany({
+        where: {
+          userId,
+          id: id.value
+        }
+      })
       this.logger.debug(
         `Knowledge entry with id ${id.value} deleted successfully`
       )
@@ -208,11 +189,12 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
 
   async findAllTypes(userId: string): Promise<string[]> {
     try {
-      const result = await this.db
-        .selectDistinct({ type: knowledgeEntries.type })
-        .from(knowledgeEntries)
-        .where(eq(knowledgeEntries.userId, userId))
-        .orderBy(knowledgeEntries.type)
+      const result = await this.prisma.knowledgeEntry.findMany({
+        where: { userId },
+        select: { type: true },
+        distinct: ['type'],
+        orderBy: { type: 'asc' }
+      })
 
       return result.map((r) => r.type)
     } catch (error) {
@@ -226,16 +208,11 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
 
   async findTopicsInType(userId: string, type: string): Promise<string[]> {
     try {
-      const result = await this.db
-        .select({ topic: knowledgeEntries.topic })
-        .from(knowledgeEntries)
-        .where(
-          and(
-            eq(knowledgeEntries.userId, userId),
-            eq(knowledgeEntries.type, type)
-          )
-        )
-        .orderBy(knowledgeEntries.topic)
+      const result = await this.prisma.knowledgeEntry.findMany({
+        where: { userId, type },
+        select: { topic: true },
+        orderBy: { topic: 'asc' }
+      })
 
       return result.map((r) => r.topic)
     } catch (error) {
@@ -249,16 +226,10 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
 
   async findByTopic(userId: string, topic: string): Promise<KnowledgeEntry[]> {
     try {
-      const results = await this.db
-        .select()
-        .from(knowledgeEntries)
-        .where(
-          and(
-            eq(knowledgeEntries.userId, userId),
-            eq(knowledgeEntries.topic, topic)
-          )
-        )
-        .orderBy(knowledgeEntries.type)
+      const results = await this.prisma.knowledgeEntry.findMany({
+        where: { userId, topic },
+        orderBy: { type: 'asc' }
+      })
 
       return results.map((result) => this.mapToDomainEntity(result))
     } catch (error) {
@@ -274,20 +245,17 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     try {
       const searchPattern = `%${query.toLowerCase()}%`
 
-      const results = await this.db
-        .select()
-        .from(knowledgeEntries)
-        .where(
-          and(
-            eq(knowledgeEntries.userId, userId),
-            or(
-              like(knowledgeEntries.content, searchPattern),
-              like(knowledgeEntries.type, searchPattern),
-              like(knowledgeEntries.topic, searchPattern)
-            )
-          )
-        )
-        .orderBy(desc(knowledgeEntries.updatedAt))
+      const results = await this.prisma.knowledgeEntry.findMany({
+        where: {
+          userId,
+          OR: [
+            { content: { contains: query, mode: 'insensitive' } },
+            { type: { contains: query, mode: 'insensitive' } },
+            { topic: { contains: query, mode: 'insensitive' } }
+          ]
+        },
+        orderBy: { updatedAt: 'desc' }
+      })
 
       return results.map((result) => this.mapToDomainEntity(result))
     } catch (error) {
@@ -301,22 +269,17 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
 
   async searchByType(userId: string, type: string, query: string): Promise<KnowledgeEntry[]> {
     try {
-      const searchPattern = `%${query.toLowerCase()}%`
-
-      const results = await this.db
-        .select()
-        .from(knowledgeEntries)
-        .where(
-          and(
-            eq(knowledgeEntries.userId, userId),
-            eq(knowledgeEntries.type, type),
-            or(
-              like(knowledgeEntries.content, searchPattern),
-              like(knowledgeEntries.topic, searchPattern)
-            )
-          )
-        )
-        .orderBy(desc(knowledgeEntries.updatedAt))
+      const results = await this.prisma.knowledgeEntry.findMany({
+        where: {
+          userId,
+          type,
+          OR: [
+            { content: { contains: query, mode: 'insensitive' } },
+            { topic: { contains: query, mode: 'insensitive' } }
+          ]
+        },
+        orderBy: { updatedAt: 'desc' }
+      })
 
       return results.map((result) => this.mapToDomainEntity(result))
     } catch (error) {
@@ -330,18 +293,23 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
 
   async searchByTags(userId: string, tags: string[]): Promise<KnowledgeEntry[]> {
     try {
-      const results = await this.db
-        .select()
-        .from(knowledgeEntries)
-        .where(
-          and(
-            eq(knowledgeEntries.userId, userId),
-            or(...tags.map((tag) => like(knowledgeEntries.tags, `%"${tag}"%`)))
-          )
-        )
-        .orderBy(desc(knowledgeEntries.updatedAt))
+      // For PostgreSQL with JSON, we filter by checking if tags array contains any of the specified tags
+      const results = await this.prisma.knowledgeEntry.findMany({
+        where: {
+          userId,
+          tags: { not: null }
+        },
+        orderBy: { updatedAt: 'desc' }
+      })
 
-      return results.map((result) => this.mapToDomainEntity(result))
+      // Filter in memory since Prisma doesn't support JSON array contains natively
+      const filtered = results.filter(result => {
+        const entryTags = result.tags as string[] | null
+        if (!entryTags) return false
+        return tags.some(tag => entryTags.includes(tag))
+      })
+
+      return filtered.map((result) => this.mapToDomainEntity(result))
     } catch (error) {
       this.logger.error(
         `Failed to search knowledge entries by tags ${tags.join(', ')}: ${error.message}`,
@@ -351,9 +319,7 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  private mapToDbRecord(
-    entry: KnowledgeEntry
-  ): typeof knowledgeEntries.$inferInsert {
+  private mapToDbRecord(entry: KnowledgeEntry) {
     return {
       id: entry.id.value,
       userId: entry.userId,
@@ -368,7 +334,7 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
     }
   }
 
-  private mapToDomainEntity(dbRecord: KnowledgeEntryRecord): KnowledgeEntry {
+  private mapToDomainEntity(dbRecord: PrismaKnowledgeEntry): KnowledgeEntry {
     const props: KnowledgeEntryProps = {
       id: new KnowledgeId(dbRecord.id),
       userId: dbRecord.userId,
@@ -376,8 +342,8 @@ export class DrizzleKnowledgeRepository implements KnowledgeRepository {
       topic: dbRecord.topic,
       key: dbRecord.key,
       content: dbRecord.content,
-      tags: dbRecord.tags || undefined,
-      metadata: dbRecord.metadata || undefined,
+      tags: dbRecord.tags as string[] | undefined,
+      metadata: dbRecord.metadata as Record<string, unknown> | undefined,
       createdAt: dbRecord.createdAt,
       updatedAt: dbRecord.updatedAt
     }
