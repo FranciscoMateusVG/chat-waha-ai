@@ -26,8 +26,19 @@ import {
   Loader2,
   Settings,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Clock
 } from 'lucide-react'
+
+// Connection flow states for state machine
+type ConnectionFlowState =
+  | 'idle'           // Initial state, not connected
+  | 'starting'       // Session is being created/started
+  | 'awaiting_qr'    // QR code displayed, waiting for scan
+  | 'connecting'     // QR scanned, WAHA connecting to WhatsApp
+  | 'connected'      // Successfully connected
+  | 'timeout'        // Connection took too long
+  | 'error'          // Error occurred
 
 interface AccountWithStatus extends WhatsappAccount {
   connectionStatus?: WhatsAppConnectionStatus
@@ -37,8 +48,16 @@ interface AccountWithStatus extends WhatsappAccount {
   isLoadingQR?: boolean
   isLoadingDiagnostics?: boolean
   showDiagnostics?: boolean
+  // State machine fields
+  flowState: ConnectionFlowState
+  flowStartedAt?: number // Timestamp when flow started (for timeout)
+  justConnected?: boolean // Flag for showing success animation
+  // Delete state
   isDeleting?: boolean
 }
+
+const POLLING_INTERVAL = 3000 // 3 seconds
+const CONNECTION_TIMEOUT = 30000 // 30 seconds
 
 function getStatusBadge(status: ConnectionStatus | string | undefined) {
   switch (status) {
@@ -57,20 +76,21 @@ function getStatusBadge(status: ConnectionStatus | string | undefined) {
   }
 }
 
-function getStatusIcon(status: ConnectionStatus | string | undefined) {
-  switch (status) {
+function getFlowStateIcon(flowState: ConnectionFlowState) {
+  switch (flowState) {
     case 'connected':
-      return <Wifi className="h-5 w-5 text-green-400" />
-    case 'needs_qr':
+      return <CheckCircle className="h-5 w-5 text-green-400" />
+    case 'awaiting_qr':
       return <QrCode className="h-5 w-5 text-yellow-400" />
+    case 'starting':
     case 'connecting':
       return <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
-    case 'disconnected':
-      return <WifiOff className="h-5 w-5 text-gray-400" />
-    case 'failed':
+    case 'timeout':
+      return <Clock className="h-5 w-5 text-orange-400" />
+    case 'error':
       return <AlertCircle className="h-5 w-5 text-red-400" />
     default:
-      return <AlertCircle className="h-5 w-5 text-gray-400" />
+      return <Smartphone className="h-5 w-5 text-primary" />
   }
 }
 
@@ -82,11 +102,31 @@ export function WhatsAppAccounts() {
   const [newAccountName, setNewAccountName] = useState('')
   const [creating, setCreating] = useState(false)
 
+  // Polling refs
+  const pollingRef = useRef<{ [accountId: string]: ReturnType<typeof setInterval> }>({})
+  const timeoutRef = useRef<{ [accountId: string]: ReturnType<typeof setTimeout> }>({})
+
+  // Derive flow state from connection status
+  const deriveFlowState = (status?: WhatsAppConnectionStatus): ConnectionFlowState => {
+    if (!status) return 'idle'
+    switch (status.status) {
+      case 'connected': return 'connected'
+      case 'needs_qr': return 'awaiting_qr'
+      case 'connecting': return 'connecting'
+      case 'failed': return 'error'
+      case 'disconnected': return 'idle'
+      default: return 'idle'
+    }
+  }
+
   const fetchAccounts = useCallback(async () => {
     try {
       setLoading(true)
       const data = await whatsappAccountsApi.getAll()
-      setAccounts(data.map(acc => ({ ...acc })))
+      setAccounts(data.map(acc => ({
+        ...acc,
+        flowState: 'idle' as ConnectionFlowState
+      })))
       setError(null)
     } catch (err) {
       console.error('Erro ao carregar contas:', err)
@@ -100,60 +140,104 @@ export function WhatsAppAccounts() {
     fetchAccounts()
   }, [fetchAccounts])
 
-  // Polling ref for status checks during QR scanning
-  const pollingRef = useRef<{ [accountId: string]: ReturnType<typeof setInterval> }>({})
-
-  // Poll status for accounts waiting for QR scan
+  // Cleanup polling on unmount
   useEffect(() => {
-    const accountsNeedingQR = accounts.filter(
-      acc => acc.connectionStatus?.status === 'needs_qr' && acc.qrData?.qrAvailable
-    )
-
-    // Start polling for each account waiting for QR scan
-    accountsNeedingQR.forEach(acc => {
-      if (!pollingRef.current[acc.id]) {
-        pollingRef.current[acc.id] = setInterval(async () => {
-          try {
-            const response = await whatsappAccountsApi.getStatus(acc.id)
-            if (response.success && response.data) {
-              // If connected, stop polling and update state
-              if (response.data.status === 'connected') {
-                if (pollingRef.current[acc.id]) {
-                  clearInterval(pollingRef.current[acc.id])
-                  delete pollingRef.current[acc.id]
-                }
-              }
-              setAccounts(prev => prev.map(a =>
-                a.id === acc.id ? {
-                  ...a,
-                  connectionStatus: response.data!,
-                  // Clear QR data if connected
-                  qrData: response.data!.status === 'connected' ? undefined : a.qrData
-                } : a
-              ))
-            }
-          } catch (err) {
-            console.error('Erro ao verificar status:', err)
-          }
-        }, 3000) // Poll every 3 seconds
-      }
-    })
-
-    // Stop polling for accounts no longer needing QR
-    Object.keys(pollingRef.current).forEach(accountId => {
-      const account = accounts.find(a => a.id === accountId)
-      if (!account || account.connectionStatus?.status !== 'needs_qr') {
-        clearInterval(pollingRef.current[accountId])
-        delete pollingRef.current[accountId]
-      }
-    })
-
-    // Cleanup on unmount
     return () => {
       Object.values(pollingRef.current).forEach(interval => clearInterval(interval))
-      pollingRef.current = {}
+      Object.values(timeoutRef.current).forEach(timeout => clearTimeout(timeout))
     }
-  }, [accounts])
+  }, [])
+
+  // Start polling for a specific account
+  const startPolling = useCallback((accountId: string) => {
+    // Don't start if already polling
+    if (pollingRef.current[accountId]) return
+
+    console.log(`[Polling] Starting for account ${accountId}`)
+
+    pollingRef.current[accountId] = setInterval(async () => {
+      try {
+        const response = await whatsappAccountsApi.getStatus(accountId)
+        if (response.success && response.data) {
+          const newFlowState = deriveFlowState(response.data)
+
+          setAccounts(prev => prev.map(acc => {
+            if (acc.id !== accountId) return acc
+
+            const wasNotConnected = acc.flowState !== 'connected'
+            const isNowConnected = newFlowState === 'connected'
+
+            // If just connected, stop polling and show success
+            if (wasNotConnected && isNowConnected) {
+              console.log(`[Polling] Account ${accountId} connected! Stopping polling.`)
+              stopPolling(accountId)
+              stopTimeout(accountId)
+              return {
+                ...acc,
+                connectionStatus: response.data!,
+                flowState: 'connected',
+                qrData: undefined, // Clear QR data
+                justConnected: true
+              }
+            }
+
+            // If status changed from needs_qr to connecting (QR was scanned)
+            if (acc.flowState === 'awaiting_qr' && response.data!.status === 'connecting') {
+              return {
+                ...acc,
+                connectionStatus: response.data!,
+                flowState: 'connecting',
+                qrData: undefined // Clear QR, show connecting state
+              }
+            }
+
+            return {
+              ...acc,
+              connectionStatus: response.data!,
+              flowState: newFlowState
+            }
+          }))
+        }
+      } catch (err) {
+        console.error(`[Polling] Error for account ${accountId}:`, err)
+      }
+    }, POLLING_INTERVAL)
+  }, [])
+
+  // Stop polling for a specific account
+  const stopPolling = useCallback((accountId: string) => {
+    if (pollingRef.current[accountId]) {
+      console.log(`[Polling] Stopping for account ${accountId}`)
+      clearInterval(pollingRef.current[accountId])
+      delete pollingRef.current[accountId]
+    }
+  }, [])
+
+  // Start timeout for connection
+  const startTimeout = useCallback((accountId: string) => {
+    // Don't start if already has timeout
+    if (timeoutRef.current[accountId]) return
+
+    console.log(`[Timeout] Starting for account ${accountId}`)
+
+    timeoutRef.current[accountId] = setTimeout(() => {
+      console.log(`[Timeout] Triggered for account ${accountId}`)
+      setAccounts(prev => prev.map(acc =>
+        acc.id === accountId && acc.flowState !== 'connected'
+          ? { ...acc, flowState: 'timeout' }
+          : acc
+      ))
+    }, CONNECTION_TIMEOUT)
+  }, [])
+
+  // Stop timeout for a specific account
+  const stopTimeout = useCallback((accountId: string) => {
+    if (timeoutRef.current[accountId]) {
+      console.log(`[Timeout] Stopping for account ${accountId}`)
+      clearTimeout(timeoutRef.current[accountId])
+      delete timeoutRef.current[accountId]
+    }
+  }, [])
 
   const fetchAccountStatus = async (accountId: string) => {
     setAccounts(prev => prev.map(acc =>
@@ -163,11 +247,15 @@ export function WhatsAppAccounts() {
     try {
       const response = await whatsappAccountsApi.getStatus(accountId)
       if (response.success && response.data) {
+        const newFlowState = deriveFlowState(response.data)
         setAccounts(prev => prev.map(acc =>
           acc.id === accountId ? {
             ...acc,
-            connectionStatus: response.data,
-            isLoadingStatus: false
+            connectionStatus: response.data!,
+            flowState: newFlowState,
+            isLoadingStatus: false,
+            // Clear timeout state if we got a valid status
+            ...(newFlowState === 'connected' ? { justConnected: false } : {})
           } : acc
         ))
       }
@@ -181,7 +269,12 @@ export function WhatsAppAccounts() {
 
   const fetchQRCode = async (accountId: string) => {
     setAccounts(prev => prev.map(acc =>
-      acc.id === accountId ? { ...acc, isLoadingQR: true } : acc
+      acc.id === accountId ? {
+        ...acc,
+        isLoadingQR: true,
+        flowState: 'starting',
+        flowStartedAt: Date.now()
+      } : acc
     ))
 
     try {
@@ -191,22 +284,34 @@ export function WhatsAppAccounts() {
           acc.id === accountId ? {
             ...acc,
             qrData: response.data,
+            flowState: response.data!.qrAvailable ? 'awaiting_qr' : acc.flowState,
             isLoadingQR: false
           } : acc
         ))
+
+        // Start polling and timeout when QR is displayed
+        if (response.data.qrAvailable) {
+          startPolling(accountId)
+          startTimeout(accountId)
+        }
       } else {
         setAccounts(prev => prev.map(acc =>
           acc.id === accountId ? {
             ...acc,
             qrData: { qrAvailable: false, message: response.error },
-            isLoadingQR: false
+            isLoadingQR: false,
+            flowState: 'error'
           } : acc
         ))
       }
     } catch (err) {
       console.error('Erro ao buscar QR:', err)
       setAccounts(prev => prev.map(acc =>
-        acc.id === accountId ? { ...acc, isLoadingQR: false } : acc
+        acc.id === accountId ? {
+          ...acc,
+          isLoadingQR: false,
+          flowState: 'error'
+        } : acc
       ))
     }
   }
@@ -237,22 +342,47 @@ export function WhatsAppAccounts() {
   }
 
   const connectAccount = async (accountId: string) => {
+    // Optimistic UI: immediately show starting state
+    setAccounts(prev => prev.map(acc =>
+      acc.id === accountId ? {
+        ...acc,
+        flowState: 'starting',
+        flowStartedAt: Date.now()
+      } : acc
+    ))
+
     try {
       const response = await whatsappAccountsApi.connect(accountId)
       if (response.success) {
-        // Refresh status and QR
+        // Refresh status and fetch QR
         await fetchAccountStatus(accountId)
         await fetchQRCode(accountId)
       }
     } catch (err) {
       console.error('Erro ao conectar:', err)
+      setAccounts(prev => prev.map(acc =>
+        acc.id === accountId ? { ...acc, flowState: 'error' } : acc
+      ))
     }
   }
 
   const disconnectAccount = async (accountId: string) => {
+    // Stop any active polling/timeout
+    stopPolling(accountId)
+    stopTimeout(accountId)
+
     try {
       const response = await whatsappAccountsApi.disconnect(accountId)
       if (response.success) {
+        setAccounts(prev => prev.map(acc =>
+          acc.id === accountId ? {
+            ...acc,
+            flowState: 'idle',
+            connectionStatus: undefined,
+            qrData: undefined,
+            justConnected: false
+          } : acc
+        ))
         await fetchAccountStatus(accountId)
       }
     } catch (err) {
@@ -279,6 +409,10 @@ export function WhatsAppAccounts() {
   const deleteAccount = async (accountId: string) => {
     if (!confirm('Tem certeza que deseja excluir esta conta WhatsApp?')) return
 
+    // Stop any active polling/timeout
+    stopPolling(accountId)
+    stopTimeout(accountId)
+
     // Set deleting state
     setAccounts(prev => prev.map(acc =>
       acc.id === accountId ? { ...acc, isDeleting: true } : acc
@@ -286,7 +420,7 @@ export function WhatsAppAccounts() {
 
     try {
       await whatsappAccountsApi.delete(accountId)
-      // Remove from state with animation delay
+      // Remove from state immediately
       setAccounts(prev => prev.filter(acc => acc.id !== accountId))
       toast.success('Conta WhatsApp excluída com sucesso')
     } catch (err) {
@@ -297,6 +431,15 @@ export function WhatsAppAccounts() {
       ))
       toast.error('Erro ao excluir conta. Tente novamente.')
     }
+  }
+
+  // Clear justConnected flag after animation
+  const clearJustConnected = (accountId: string) => {
+    setTimeout(() => {
+      setAccounts(prev => prev.map(acc =>
+        acc.id === accountId ? { ...acc, justConnected: false } : acc
+      ))
+    }, 5000) // Clear after 5 seconds
   }
 
   if (loading) {
@@ -368,7 +511,13 @@ export function WhatsAppAccounts() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {accounts.map((account) => (
+          {accounts.map((account) => {
+            // Trigger justConnected effect
+            if (account.justConnected) {
+              clearJustConnected(account.id)
+            }
+
+            return (
             <Card
               key={account.id}
               className={`border-border/50 bg-card/50 backdrop-blur transition-opacity duration-200 ${
@@ -381,10 +530,8 @@ export function WhatsAppAccounts() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                       {account.isDeleting ? (
                         <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
-                      ) : account.connectionStatus ? (
-                        getStatusIcon(account.connectionStatus.status)
                       ) : (
-                        <Smartphone className="h-5 w-5 text-primary" />
+                        getFlowStateIcon(account.flowState)
                       )}
                     </div>
                     <div>
@@ -425,6 +572,22 @@ export function WhatsAppAccounts() {
               </CardHeader>
 
               <CardContent className="space-y-4">
+                {/* Success Banner - shown when just connected */}
+                {account.justConnected && (
+                  <div className="border border-green-500/50 rounded-lg p-4 bg-green-500/10 flex items-center gap-3 animate-pulse">
+                    <CheckCircle className="h-6 w-6 text-green-400" />
+                    <div>
+                      <p className="text-green-400 font-medium text-lg">WhatsApp conectado com sucesso!</p>
+                      {account.connectionStatus?.phoneNumber && (
+                        <p className="text-green-400/80 text-sm">
+                          Telefone: +{account.connectionStatus.phoneNumber}
+                          {account.connectionStatus.pushName && ` (${account.connectionStatus.pushName})`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -440,7 +603,7 @@ export function WhatsAppAccounts() {
                     Verificar Status
                   </Button>
 
-                  {account.connectionStatus?.status !== 'connected' ? (
+                  {account.flowState !== 'connected' && account.flowState !== 'connecting' && account.flowState !== 'awaiting_qr' && account.flowState !== 'starting' ? (
                     <Button
                       variant="default"
                       size="sm"
@@ -450,7 +613,7 @@ export function WhatsAppAccounts() {
                       <Wifi className="h-4 w-4 mr-2" />
                       Conectar
                     </Button>
-                  ) : (
+                  ) : account.flowState === 'connected' ? (
                     <Button
                       variant="outline"
                       size="sm"
@@ -461,10 +624,10 @@ export function WhatsAppAccounts() {
                       <WifiOff className="h-4 w-4 mr-2" />
                       Desconectar
                     </Button>
-                  )}
+                  ) : null}
 
-                  {(account.connectionStatus?.status === 'needs_qr' ||
-                    account.connectionStatus?.qrAvailable) && (
+                  {(account.flowState === 'awaiting_qr' || account.flowState === 'timeout' ||
+                    account.connectionStatus?.status === 'needs_qr') && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -475,7 +638,7 @@ export function WhatsAppAccounts() {
                         ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         : <QrCode className="h-4 w-4 mr-2" />
                       }
-                      Gerar QR Code
+                      {account.flowState === 'timeout' ? 'Gerar Novo QR Code' : 'Gerar QR Code'}
                     </Button>
                   )}
 
@@ -502,13 +665,21 @@ export function WhatsAppAccounts() {
                   </Button>
                 </div>
 
+                {/* Starting State */}
+                {account.flowState === 'starting' && (
+                  <div className="border border-blue-500/50 rounded-lg p-4 bg-blue-500/10 flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
+                    <p className="text-blue-400">Iniciando sessão...</p>
+                  </div>
+                )}
+
                 {/* QR Code Display */}
-                {account.qrData?.qrAvailable && account.qrData.qrCode && (
+                {account.flowState === 'awaiting_qr' && account.qrData?.qrAvailable && account.qrData.qrCode && (
                   <div className="border border-border/50 rounded-lg p-4 bg-white flex flex-col items-center">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-3">
                       <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
                       <p className="text-gray-900 text-sm font-medium">
-                        Escaneie o QR Code com seu WhatsApp
+                        Aguardando leitura do QR Code...
                       </p>
                     </div>
                     <img
@@ -519,7 +690,7 @@ export function WhatsAppAccounts() {
                       alt="QR Code"
                       className="w-64 h-64"
                     />
-                    <p className="text-blue-600 text-xs mt-2 flex items-center gap-1">
+                    <p className="text-blue-600 text-xs mt-3 flex items-center gap-1">
                       <span>Verificando conexão automaticamente...</span>
                     </p>
                     <p className="text-gray-500 text-xs mt-1">
@@ -528,12 +699,63 @@ export function WhatsAppAccounts() {
                   </div>
                 )}
 
-                {/* Connection Success Message */}
-                {account.connectionStatus?.status === 'connected' && (
-                  <div className="border border-green-500/50 rounded-lg p-4 bg-green-500/10 flex items-center gap-2">
+                {/* Connecting State - after QR scan */}
+                {account.flowState === 'connecting' && (
+                  <div className="border border-blue-500/50 rounded-lg p-4 bg-blue-500/10 flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
+                    <div>
+                      <p className="text-blue-400 font-medium">Conectando...</p>
+                      <p className="text-blue-400/80 text-sm">O WhatsApp está sendo autenticado. Aguarde alguns segundos.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Timeout State */}
+                {account.flowState === 'timeout' && (
+                  <div className="border border-orange-500/50 rounded-lg p-4 bg-orange-500/10">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Clock className="h-5 w-5 text-orange-400" />
+                      <p className="text-orange-400 font-medium">A conexão está demorando mais que o esperado</p>
+                    </div>
+                    <p className="text-orange-400/80 text-sm mb-3">
+                      Isso pode acontecer se o QR Code expirou ou houve um problema na leitura.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchQRCode(account.id)}
+                        disabled={account.isLoadingQR}
+                        className="text-orange-400 border-orange-400/50 hover:bg-orange-400/10"
+                      >
+                        {account.isLoadingQR
+                          ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          : <QrCode className="h-4 w-4 mr-2" />
+                        }
+                        Gerar Novo QR Code
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => fetchAccountStatus(account.id)}
+                        disabled={account.isLoadingStatus}
+                      >
+                        {account.isLoadingStatus
+                          ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          : <RefreshCw className="h-4 w-4 mr-2" />
+                        }
+                        Verificar Status
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Connected State (when not justConnected) */}
+                {account.flowState === 'connected' && !account.justConnected && account.connectionStatus && (
+                  <div className="border border-green-500/50 rounded-lg p-4 bg-green-500/10 flex items-center gap-3">
                     <CheckCircle className="h-5 w-5 text-green-400" />
                     <div>
-                      <p className="text-green-400 font-medium">WhatsApp conectado com sucesso!</p>
+                      <p className="text-green-400 font-medium">WhatsApp conectado</p>
                       {account.connectionStatus.phoneNumber && (
                         <p className="text-green-400/80 text-sm">
                           Telefone: +{account.connectionStatus.phoneNumber}
@@ -544,15 +766,16 @@ export function WhatsAppAccounts() {
                   </div>
                 )}
 
-                {account.qrData && !account.qrData.qrAvailable && account.qrData.message && account.connectionStatus?.status !== 'connected' && (
-                  <div className="border border-green-500/50 rounded-lg p-4 bg-green-500/10 flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-400" />
-                    <p className="text-green-400">{account.qrData.message}</p>
+                {/* QR Not Available Message */}
+                {account.qrData && !account.qrData.qrAvailable && account.qrData.message && account.flowState !== 'connected' && (
+                  <div className="border border-yellow-500/50 rounded-lg p-4 bg-yellow-500/10 flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-yellow-400" />
+                    <p className="text-yellow-400">{account.qrData.message}</p>
                   </div>
                 )}
 
                 {/* Connection Error */}
-                {account.connectionStatus?.error && (
+                {account.flowState === 'error' && account.connectionStatus?.error && (
                   <div className="border border-red-500/50 rounded-lg p-4 bg-red-500/10 flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-red-400" />
                     <p className="text-red-400">{account.connectionStatus.error}</p>
@@ -654,7 +877,7 @@ export function WhatsAppAccounts() {
                 )}
               </CardContent>
             </Card>
-          ))}
+          )})}
         </div>
       )}
     </div>
