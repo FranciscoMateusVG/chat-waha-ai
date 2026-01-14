@@ -16,6 +16,7 @@ RUN apk add --no-cache python3 make g++
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile
 COPY . .
+RUN npx prisma generate
 RUN pnpm run build
 
 # Production stage
@@ -23,21 +24,21 @@ FROM base AS runner
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nestjs
 
-# Create data directory for SQLite database
-RUN mkdir -p /app/data && chown -R nestjs:nodejs /app
+WORKDIR /app
+RUN chown -R nestjs:nodejs /app
 
 # Copy built application
 COPY --from=build --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=deps --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=nestjs:nodejs /app/package.json ./package.json
 
-# Copy database file if it exists
-COPY --chown=nestjs:nodejs chat-ai-data.sqlite* ./
+# Copy Prisma schema and generated client for migrations
+COPY --from=build --chown=nestjs:nodejs /app/prisma ./prisma
 
 USER nestjs
 
 EXPOSE 3000
 
-# Start the application
-CMD ["node", "dist/src/main"]
+# Run migrations and start the application
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]
 

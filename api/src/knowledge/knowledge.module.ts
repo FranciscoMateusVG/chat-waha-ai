@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common'
-import { DrizzleDatabaseService } from '../infrastructure/drizzle/database.provider'
 
 // Application Layer
 import {
@@ -17,8 +16,8 @@ import {
 } from './application/use-cases'
 
 // Infrastructure Layer
-import { DrizzleKnowledgeRepository } from './infrastructure/persistence/drizzle-knowledge.repository'
-import { DrizzleSystemPromptRepository } from './infrastructure/persistence/drizzle-system-prompt.repository'
+import { PrismaKnowledgeRepository } from './infrastructure/prisma/knowledge.repository'
+import { PrismaSystemPromptRepository } from './infrastructure/prisma/system-prompt.repository'
 
 // Presentation Layer
 import { KnowledgeController } from './presentation/controllers/knowledge.controller'
@@ -29,9 +28,6 @@ import { KNOWLEDGE_REPOSITORY, SYSTEM_PROMPT_REPOSITORY } from './tokens'
 @Module({
   controllers: [KnowledgeController],
   providers: [
-    // Database
-    DrizzleDatabaseService,
-
     // Application Use Cases
     StoreKnowledgeUseCase,
     RetrieveKnowledgeUseCase,
@@ -48,11 +44,11 @@ import { KNOWLEDGE_REPOSITORY, SYSTEM_PROMPT_REPOSITORY } from './tokens'
     // Repositories
     {
       provide: KNOWLEDGE_REPOSITORY,
-      useClass: DrizzleKnowledgeRepository
+      useClass: PrismaKnowledgeRepository
     },
     {
       provide: SYSTEM_PROMPT_REPOSITORY,
-      useClass: DrizzleSystemPromptRepository
+      useClass: PrismaSystemPromptRepository
     }
   ],
   exports: [
