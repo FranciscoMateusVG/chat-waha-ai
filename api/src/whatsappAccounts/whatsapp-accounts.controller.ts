@@ -176,8 +176,8 @@ export class WhatsappAccountsController {
       success: true,
       data: {
         qrAvailable: true,
-        qrCode: qr.value,
-        mimetype: qr.mimetype || 'image/png'
+        qrCode: qr.data,
+        mimetype: qr.mimetype
       }
     }
   }
