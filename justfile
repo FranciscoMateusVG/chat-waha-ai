@@ -23,6 +23,9 @@ infra-status:
 infra-logs:
     docker compose -f docker-compose.infra.yml logs -f
 
+# Restart infrastructure services
+infra-restart: infra-down infra-up
+
 # Start development (FE + BE with Turborepo)
 # Ensures infra is up first
 dev: infra-up
@@ -133,23 +136,6 @@ db-push:
 # Open Drizzle Studio
 db-studio:
     cd api && pnpm db:studio
-
-# ============== Infrastructure (for local Turbo dev) ==============
-
-# Start infrastructure services (WAHA only)
-infra-up:
-    docker compose -f docker-compose.infra.yml up -d
-
-# Stop infrastructure services
-infra-down:
-    docker compose -f docker-compose.infra.yml down
-
-# View infrastructure logs
-infra-logs:
-    docker compose -f docker-compose.infra.yml logs -f
-
-# Restart infrastructure services
-infra-restart: infra-down infra-up
 
 # ============== Cleanup ==============
 

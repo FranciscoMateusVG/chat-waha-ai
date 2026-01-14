@@ -3,7 +3,7 @@
 
 services:
   waha:
-    image: devlikeapro/waha:arm
+    image: devlikeapro/waha-plus:arm
     restart: unless-stopped
     environment:
       # Webhook configuration for local dev
@@ -29,7 +29,16 @@ services:
     volumes:
       - waha_sessions:/app/.sessions
     healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '-O', '-', 'http://localhost:3000/api/sessions']
+      test:
+        [
+          'CMD',
+          'wget',
+          '--quiet',
+          '--tries=1',
+          '-O',
+          '-',
+          'http://localhost:3000/api/sessions'
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
