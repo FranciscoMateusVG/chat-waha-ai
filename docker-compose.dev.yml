@@ -68,7 +68,7 @@ services:
       - api
 
   waha:
-    image: devlikeapro/waha:arm
+    image: devlikeapro/waha-plus:arm
     restart: unless-stopped
     environment:
       - WHATSAPP_HOOK_URL=http://api:3000/webhooks/waha/message
@@ -86,7 +86,15 @@ services:
     volumes:
       - waha_sessions:/app/.sessions
     healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/api/health']
+      test:
+        [
+          'CMD',
+          'wget',
+          '--quiet',
+          '--tries=1',
+          '--spider',
+          'http://localhost:3000/api/health'
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
