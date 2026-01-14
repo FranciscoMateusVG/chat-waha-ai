@@ -5,18 +5,57 @@
 default:
     @just --list
 
-# ============== Docker Compose ==============
+# ============== Local Development (Turborepo) ==============
 
-# Start dev environment (hot-reload)
-dev:
+# Start infrastructure (WAHA) in background
+infra-up:
+    docker compose -f docker-compose.infra.yml up -d
+
+# Stop infrastructure
+infra-down:
+    docker compose -f docker-compose.infra.yml down
+
+# Check if infrastructure is running
+infra-status:
+    docker compose -f docker-compose.infra.yml ps
+
+# View infrastructure logs
+infra-logs:
+    docker compose -f docker-compose.infra.yml logs -f
+
+# Start development (FE + BE with Turborepo)
+# Ensures infra is up first
+dev: infra-up
+    pnpm dev
+
+# Build all packages
+build:
+    pnpm build
+
+# Run tests
+test:
+    pnpm test
+
+# Run linting
+lint:
+    pnpm lint
+
+# Install all dependencies
+install:
+    pnpm install
+
+# ============== Docker Compose (Full Stack) ==============
+
+# Start dev environment in Docker (hot-reload)
+dev-docker:
     docker compose -f docker-compose.dev.yml up --build
 
-# Start dev in background
-dev-d:
+# Start dev in background (Docker)
+dev-docker-d:
     docker compose -f docker-compose.dev.yml up -d --build
 
-# Stop dev environment
-dev-down:
+# Stop dev environment (Docker)
+dev-docker-down:
     docker compose -f docker-compose.dev.yml down
 
 # Start prod environment
@@ -31,7 +70,7 @@ prod-d:
 prod-down:
     docker compose -f docker-compose.prod.yml down
 
-# View logs (all services)
+# View logs (Docker dev)
 logs service="":
     @if [ -z "{{service}}" ]; then \
         docker compose -f docker-compose.dev.yml logs -f; \
@@ -51,61 +90,35 @@ logs-prod service="":
 ps:
     docker compose -f docker-compose.dev.yml ps
 
-# ============== API (Backend) ==============
+# ============== Individual Packages ==============
 
-# Install API dependencies
-api-install:
-    cd api && pnpm install
+# Run only API in dev mode
+api-dev:
+    cd api && pnpm dev
 
-# Build API
+# Run only frontend in dev mode
+fe-dev:
+    cd frontend && pnpm dev
+
+# Build only API
 api-build:
     cd api && pnpm build
 
-# Run API in dev mode (without Docker)
-api-dev:
-    cd api && pnpm dev
+# Build only frontend
+fe-build:
+    cd frontend && pnpm build
 
 # Run API tests
 api-test:
     cd api && pnpm test
 
-# Run API tests in watch mode
-api-test-watch:
-    cd api && pnpm test:watch
-
-# Lint API code
+# Lint API
 api-lint:
     cd api && pnpm lint
 
-# ============== Frontend ==============
-
-# Install frontend dependencies
-fe-install:
-    cd frontend && pnpm install
-
-# Build frontend
-fe-build:
-    cd frontend && pnpm build
-
-# Run frontend in dev mode (without Docker)
-fe-dev:
-    cd frontend && pnpm dev
-
-# Lint frontend code
+# Lint frontend
 fe-lint:
     cd frontend && pnpm lint
-
-# Preview frontend build
-fe-preview:
-    cd frontend && pnpm preview
-
-# ============== Full Stack (Local) ==============
-
-# Install all dependencies
-install: api-install fe-install
-
-# Build everything
-build: api-build fe-build
 
 # ============== Database ==============
 
@@ -125,12 +138,13 @@ db-studio:
 
 # Stop all containers and remove volumes
 clean:
+    docker compose -f docker-compose.infra.yml down -v
     docker compose -f docker-compose.dev.yml down -v
     docker compose -f docker-compose.prod.yml down -v
 
 # Remove node_modules
 clean-deps:
-    rm -rf api/node_modules frontend/node_modules
+    rm -rf node_modules api/node_modules frontend/node_modules
 
 # Full clean (containers + deps)
 clean-all: clean clean-deps
@@ -143,7 +157,12 @@ docker-prune:
 
 # Show service URLs
 urls:
-    @echo "Dev Environment:"
+    @echo "Local Development (Turborepo):"
+    @echo "  Frontend: http://localhost:5173"
+    @echo "  API:      http://localhost:3001"
+    @echo "  WAHA:     http://localhost:3002"
+    @echo ""
+    @echo "Docker Dev Environment:"
     @echo "  Frontend: http://localhost:5173"
     @echo "  API:      http://localhost:3001"
     @echo "  WAHA:     http://localhost:3002"
@@ -157,5 +176,5 @@ urls:
 health:
     @echo "Checking services..."
     @curl -sf http://localhost:3001/health > /dev/null && echo "API: OK" || echo "API: DOWN"
-    @curl -sf http://localhost:5173 > /dev/null && echo "Frontend (dev): OK" || echo "Frontend (dev): DOWN"
-    @curl -sf http://localhost:8080 > /dev/null && echo "Frontend (prod): OK" || echo "Frontend (prod): DOWN"
+    @curl -sf http://localhost:5173 > /dev/null && echo "Frontend: OK" || echo "Frontend: DOWN"
+    @curl -sf http://localhost:3002/api/health > /dev/null && echo "WAHA: OK" || echo "WAHA: DOWN"
