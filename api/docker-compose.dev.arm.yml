@@ -1,6 +1,24 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-chatwaha}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-chatwaha_secret}
+      - POSTGRES_DB=${POSTGRES_DB:-chatwaha}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-chatwaha} -d ${POSTGRES_DB:-chatwaha}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   chat-ai:
     build:
       context: .
@@ -17,6 +35,7 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - WAHA_BASE_URL=${WAHA_BASE_URL:-http://waha:3000}
       - WAHA_DEFAULT_SESSION=${WAHA_DEFAULT_SESSION:-default}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-chatwaha}:${POSTGRES_PASSWORD:-chatwaha_secret}@postgres:5432/${POSTGRES_DB:-chatwaha}?schema=public
     volumes:
       # Mount source code for hot reload
       - ./src:/app/src
@@ -24,15 +43,17 @@ services:
       - ./tsconfig.build.json:/app/tsconfig.build.json
       - ./nest-cli.json:/app/nest-cli.json
       - ./package.json:/app/package.json
-      - ./package-lock.json:/app/package-lock.json
-      - ./drizzle.config.ts:/app/drizzle.config.ts
-      # Persist database
-      - ./chat-ai-data.sqlite:/app/chat-ai-data.sqlite
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml
+      - ./prisma.config.ts:/app/prisma.config.ts
+      - ./prisma:/app/prisma
       # Use named volume for node_modules to avoid overwriting
       - node_modules:/app/node_modules
     restart: unless-stopped
     depends_on:
-      - waha
+      postgres:
+        condition: service_healthy
+      waha:
+        condition: service_started
     command: npm run dev
 
   waha:
@@ -41,7 +62,7 @@ services:
     restart: unless-stopped
     environment:
       - WHATSAPP_HOOK_URL=http://chat-ai:3000/webhooks/waha/message
-      - WHATSAPP_HOOK_EVENTS=message
+      - WHATSAPP_HOOK_EVENTS=message,message.any,session.status
       - WHATSAPP_DEFAULT_ENGINE=WEBJS
       - WHATSAPP_START_SESSION=default
       - WAHA_API_KEY=
@@ -70,6 +91,8 @@ services:
       start_period: 60s
 
 volumes:
+  postgres_data:
+    driver: local
   node_modules:
     driver: local
   waha_sessions:
