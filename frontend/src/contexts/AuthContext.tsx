@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { authApi } from '../services/api';
+import { authApi, setCurrentUserId } from '../services/api';
 import type { User } from '../types/api';
 
 interface AuthContextType {
@@ -15,6 +15,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Keep the API client's user ID in sync with auth state
+  useEffect(() => {
+    setCurrentUserId(user?.id ?? null);
+  }, [user]);
 
   useEffect(() => {
     checkAuth();

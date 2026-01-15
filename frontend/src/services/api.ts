@@ -23,6 +23,13 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+// Module-level storage for user ID (accessible by interceptor)
+let currentUserId: string | null = null;
+
+export function setCurrentUserId(userId: string | null) {
+  currentUserId = userId;
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -30,6 +37,14 @@ export const api = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+// Add request interceptor to inject X-User-ID header
+api.interceptors.request.use((config) => {
+  if (currentUserId) {
+    config.headers['X-User-ID'] = currentUserId;
+  }
+  return config;
+});
 
 // Auth API
 export const authApi = {
