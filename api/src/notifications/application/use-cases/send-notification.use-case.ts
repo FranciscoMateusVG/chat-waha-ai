@@ -91,8 +91,6 @@ export class SendNotificationUseCase {
         contactInfo
       )
 
-      await this.notificationRepository.save(notification)
-
       // Get delivery strategy
       const channelStrategy = notification.getChannelStrategy()
       const strategy = this.deliveryStrategies.get(channelStrategy)
@@ -102,10 +100,13 @@ export class SendNotificationUseCase {
         )
       }
 
-      // Deliver notification
+      // IMPORTANT: Deliver notification via WAHA FIRST before saving to DB
+      // This ensures we only persist notifications that were actually sent
       await strategy.deliverSingle(notification)
       notification.markAsSent()
-      await this.notificationRepository.update(notification)
+
+      // Only save to DB after successful WAHA send
+      await this.notificationRepository.save(notification)
 
       // Emit domain event
       this.eventBus.publish(new NotificationSentEvent(notification))

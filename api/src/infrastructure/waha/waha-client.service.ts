@@ -212,7 +212,8 @@ export class WhatsAppClientService implements WhatsappVendor {
       return data
     } catch (error) {
       this.logger.error({ err: error }, 'Failed to check number existence')
-      return { numberExists: false, chatId: '', error: true }
+      // Re-throw to properly propagate WAHA connection errors
+      throw new Error(`Failed to check number existence via WAHA: ${error.message}`)
     }
   }
 
