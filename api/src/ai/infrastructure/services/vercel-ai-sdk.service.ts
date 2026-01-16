@@ -39,6 +39,14 @@ export class VercelAiSdkService implements AiService {
 
       this.logger.debug('Prompt do sistema carregado do banco de dados')
 
+      // Filter and validate context messages to ensure CoreMessage format
+      const validMessages = context
+        .filter((msg) => msg.role && typeof msg.content === 'string' && msg.content.length > 0)
+        .map((msg) => ({
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.content
+        }))
+
       // Use Vercel AI SDK with tools
       const result = await generateText({
         model: openai('gpt-4o-mini'),
@@ -47,10 +55,7 @@ export class VercelAiSdkService implements AiService {
             role: 'system',
             content: systemPromptContent
           },
-          ...context.map((msg) => ({
-            role: msg.role,
-            content: msg.content
-          }))
+          ...validMessages
         ],
         tools: this.toolRegistry.getTools(userId),
         maxSteps: 5,
