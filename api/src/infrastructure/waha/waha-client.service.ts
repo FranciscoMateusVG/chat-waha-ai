@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { Notification } from 'src/notifications/domain'
 import { WhatsappVendor } from 'src/notifications/domain/services/whatsapp/whatsApp-vendor.interface'
 import { WhatsappContactInfo } from 'src/notifications/domain/value-objects/whatsapp-contact-info.vo'
@@ -23,12 +24,12 @@ export class WhatsAppClientService implements WhatsappVendor {
   private readonly wahaBaseUrl: string
   private readonly defaultSession: string
 
-  constructor() {
-    // Get WAHA API configuration from environment variables
-    this.wahaBaseUrl = process.env.WAHA_BASE_URL || 'http://localhost:4004'
-    this.defaultSession = process.env.WAHA_DEFAULT_SESSION || 'default'
+  constructor(private readonly configService: ConfigService) {
+    // Get WAHA API configuration from environment variables via ConfigService
+    this.wahaBaseUrl = this.configService.get<string>('WAHA_BASE_URL') || 'http://localhost:3002'
+    this.defaultSession = this.configService.get<string>('WAHA_DEFAULT_SESSION') || 'default'
 
-    this.logger.log('WhatsAppClientService initialized with WAHA API')
+    this.logger.log(`WhatsAppClientService initialized with WAHA API at ${this.wahaBaseUrl}`)
   }
 
   async send(notification: Notification): Promise<void> {

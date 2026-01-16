@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
 import { CqrsModule } from '@nestjs/cqrs'
 
 // Domain Services
@@ -48,7 +49,7 @@ import {
 } from './tokens'
 
 @Module({
-  imports: [CqrsModule],
+  imports: [CqrsModule, ConfigModule],
   controllers: [NotificationsController],
   providers: [
     // Rate Limiter Configuration
