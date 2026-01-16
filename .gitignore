@@ -5,3 +5,8 @@ node_modules
 .beads
 state.json
 .turbo
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
