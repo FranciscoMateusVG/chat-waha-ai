@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
@@ -11,6 +13,7 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Post,
   Query
 } from '@nestjs/common'
 import {
@@ -36,6 +39,7 @@ import {
   PaginationQueryDto
 } from '../application/dtos/pagination.dto'
 import { ChatHistoryRepository } from '../domain/repositories/chat-history.repository'
+import { MessageContent } from '../domain/value-objects'
 import { CHAT_HISTORY_REPOSITORY } from '../tokens'
 
 const USER_ID_HEADER = 'x-user-id'
@@ -321,6 +325,125 @@ export class ChatHistoryController {
       }
       this.logger.error(`Error closing chat history ${id}`, error.stack)
       throw new InternalServerErrorException('Failed to close chat history')
+    }
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete a chat history',
+    description: 'Permanently deletes a chat history and all its messages'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Chat history ID',
+    example: '123e4567-e89b-12d3-a456-426614174000'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Chat history deleted successfully',
+    type: ApiResponseDto
+  })
+  @ApiNotFoundResponse({
+    description: 'Chat history not found'
+  })
+  async deleteChatHistory(
+    @Headers(USER_ID_HEADER) userId: string,
+    @Param('id') id: string
+  ): Promise<ApiResponseDto<{ message: string }>> {
+    try {
+      const validUserId = this.validateUserId(userId)
+      const chatHistory =
+        await this.chatHistoryRepository.findChatHistoryById(validUserId, id)
+
+      if (!chatHistory) {
+        throw new NotFoundException(`Chat history with id ${id} not found`)
+      }
+
+      await this.chatHistoryRepository.delete(validUserId, id)
+
+      this.logger.log(`Chat history ${id} deleted successfully`)
+
+      return {
+        success: true,
+        data: {
+          message: 'Chat history deleted successfully'
+        }
+      }
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error
+      }
+      this.logger.error(`Error deleting chat history ${id}`, error.stack)
+      throw new InternalServerErrorException('Failed to delete chat history')
+    }
+  }
+
+  @Post(':id/messages')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Send a message as the owner',
+    description: 'Adds a new message from the owner to the chat history'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Chat history ID',
+    example: '123e4567-e89b-12d3-a456-426614174000'
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Message sent successfully',
+    type: ApiResponseDto
+  })
+  @ApiNotFoundResponse({
+    description: 'Chat history not found'
+  })
+  @ApiBadRequestResponse({
+    description: 'Chat is closed or invalid message content'
+  })
+  async sendMessage(
+    @Headers(USER_ID_HEADER) userId: string,
+    @Param('id') id: string,
+    @Body() body: { content: string }
+  ): Promise<ApiResponseDto<{ message: string }>> {
+    try {
+      const validUserId = this.validateUserId(userId)
+
+      if (!body.content || body.content.trim().length === 0) {
+        throw new BadRequestException('Message content is required')
+      }
+
+      const chatHistory =
+        await this.chatHistoryRepository.findChatHistoryById(validUserId, id)
+
+      if (!chatHistory) {
+        throw new NotFoundException(`Chat history with id ${id} not found`)
+      }
+
+      if (chatHistory.isChatClosed()) {
+        throw new BadRequestException('Cannot send messages to a closed chat')
+      }
+
+      chatHistory.addOwnerMessage(new MessageContent(body.content.trim()))
+      await this.chatHistoryRepository.save(chatHistory)
+
+      this.logger.log(`Message sent to chat history ${id}`)
+
+      return {
+        success: true,
+        data: {
+          message: 'Message sent successfully'
+        }
+      }
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error
+      }
+      this.logger.error(`Error sending message to chat history ${id}`, error.stack)
+      throw new InternalServerErrorException('Failed to send message')
     }
   }
 }

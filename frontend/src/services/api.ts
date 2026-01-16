@@ -214,6 +214,24 @@ export const chatHistoryApi = {
       `/chat-history/${id}/close`
     )
     return response.data
+  },
+
+  delete: async (id: string): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.delete<ApiResponse<{ message: string }>>(
+      `/chat-history/${id}`
+    )
+    return response.data
+  },
+
+  sendMessage: async (
+    id: string,
+    content: string
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const response = await api.post<ApiResponse<{ message: string }>>(
+      `/chat-history/${id}/messages`,
+      { content }
+    )
+    return response.data
   }
 }
 

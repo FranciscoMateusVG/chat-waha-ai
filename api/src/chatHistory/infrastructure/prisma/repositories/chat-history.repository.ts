@@ -246,6 +246,33 @@ export class PrismaChatHistoryRepository implements ChatHistoryRepository {
     }
   }
 
+  async delete(userId: string, id: string): Promise<void> {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // First delete all messages (due to foreign key constraint)
+        await tx.chatMessage.deleteMany({
+          where: { chatHistoryId: id }
+        })
+
+        // Then delete the chat history
+        await tx.chatHistory.deleteMany({
+          where: {
+            id,
+            userId
+          }
+        })
+      })
+
+      this.logger.debug(`Chat history deleted: ${id}`)
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete chat history: ${error.message}`,
+        error.stack
+      )
+      throw error
+    }
+  }
+
   // ==================== MAPPING ====================
 
   private mapChatHistoryToDb(chatHistory: ChatHistory) {

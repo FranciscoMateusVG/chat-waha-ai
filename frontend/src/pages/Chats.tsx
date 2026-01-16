@@ -12,7 +12,8 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { chatHistoryApi } from '@/services/api'
 import type { ChatHistory, ChatHistoryWithMessages, ChatMessage, PaginationMeta } from '@/types/api'
-import { MessageSquare, RefreshCw, User, Clock, Users, X, Bot, UserCircle } from 'lucide-react'
+import { MessageSquare, RefreshCw, User, Clock, Users, X, Bot, UserCircle, Trash2, Send } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 export function Chats() {
   const [chats, setChats] = useState<ChatHistory[]>([])
@@ -22,6 +23,8 @@ export function Chats() {
   const [selectedChat, setSelectedChat] = useState<ChatHistoryWithMessages | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [newMessage, setNewMessage] = useState('')
+  const [sendingMessage, setSendingMessage] = useState(false)
 
   const fetchChats = async (pageNum: number = 1) => {
     setLoading(true)
@@ -67,6 +70,39 @@ export function Chats() {
       }
     } catch (error) {
       console.error('Erro ao fechar conversa:', error)
+    }
+  }
+
+  const deleteChat = async (chatId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta conversa?')) return
+    try {
+      const response = await chatHistoryApi.delete(chatId)
+      if (response.success) {
+        setChats(chats.filter(c => c.id !== chatId))
+        if (selectedChat?.id === chatId) {
+          setDialogOpen(false)
+          setSelectedChat(null)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao excluir conversa:', error)
+    }
+  }
+
+  const sendMessage = async () => {
+    if (!selectedChat || !newMessage.trim() || sendingMessage) return
+    setSendingMessage(true)
+    try {
+      const response = await chatHistoryApi.sendMessage(selectedChat.id, newMessage.trim())
+      if (response.success) {
+        setNewMessage('')
+        // Refresh chat details to show new message
+        await fetchChatDetails(selectedChat.id)
+      }
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error)
+    } finally {
+      setSendingMessage(false)
     }
   }
 
@@ -277,17 +313,27 @@ export function Chats() {
               <span className="text-muted-foreground">Iniciado:</span>
               <span className="font-medium">{formatDate(selectedChat?.openedAt)}</span>
             </div>
-            {selectedChat?.status === 'open' && (
+            <div className="ml-auto flex items-center gap-2">
+              {selectedChat?.status === 'open' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectedChat && closeChat(selectedChat.id)}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Fechar
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => selectedChat && closeChat(selectedChat.id)}
-                className="ml-auto"
+                onClick={() => selectedChat && deleteChat(selectedChat.id)}
+                className="text-destructive hover:text-destructive"
               >
-                <X className="h-4 w-4 mr-1" />
-                Fechar Conversa
+                <Trash2 className="h-4 w-4 mr-1" />
+                Excluir
               </Button>
-            )}
+            </div>
           </div>
 
           {/* Messages */}
@@ -319,6 +365,29 @@ export function Chats() {
               )}
             </div>
           </ScrollArea>
+
+          {/* Message Input */}
+          {selectedChat?.status === 'open' && (
+            <div className="flex items-center gap-2 pt-4 border-t border-border">
+              <Input
+                placeholder="Digite uma mensagem como atendente..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                disabled={sendingMessage}
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={sendingMessage || !newMessage.trim()}
+              >
+                {sendingMessage ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

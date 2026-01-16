@@ -25,6 +25,7 @@ export interface ChatHistoryRepository {
   ): Promise<PaginatedResult<ChatHistory>>
   findChatHistoryById(userId: string, id: string): Promise<ChatHistory | null>
   save(chatHistory: ChatHistory): Promise<void>
+  delete(userId: string, id: string): Promise<void>
 
   // System methods (for internal processes like scheduler)
   findAllOpenChatHistoriesAcrossAllUsers(): Promise<ChatHistory[]>
