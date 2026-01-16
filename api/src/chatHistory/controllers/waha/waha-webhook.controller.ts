@@ -91,10 +91,9 @@ export class WAHAWebhookController {
   }
 
   private shouldProcessEvent(wahaPayload: WAHAWebhookPayload): boolean {
-    // Only process actual messages, not system events
-    const validEvents = ['message', 'message.any']
-
-    if (!validEvents.includes(wahaPayload.event)) {
+    // Only process 'message' events - not 'message.any' to avoid duplicates
+    // WAHA sends both events for the same message, so we only handle one
+    if (wahaPayload.event !== 'message') {
       return false
     }
 
